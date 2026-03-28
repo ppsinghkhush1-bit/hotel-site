@@ -13,6 +13,7 @@ interface BookingModalProps {
   onClose: () => void;
   room: {
     id: string | number;
+    uuid?: string | null;
     name: string;
     image: string;
     description: string;
@@ -69,8 +70,7 @@ export default function BookingModal({
     const end = new Date(`${bookingCheckOut}T00:00:00`);
     if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
     if (start >= end) return 0;
-    const diffTime = end.getTime() - start.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   }, [bookingCheckIn, bookingCheckOut]);
 
   const pricePerNight = useMemo(() => {
@@ -110,29 +110,21 @@ export default function BookingModal({
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
   const resolveRoomIdForBooking = async () => {
+    if (room.uuid && isUuid(room.uuid)) return room.uuid;
     if (typeof room.id === 'string' && isUuid(room.id)) return room.id;
 
     const { data, error } = await supabase
       .from('rooms')
-      .select('id')
+      .select('id, uuid')
       .eq('id', room.id)
       .maybeSingle();
 
-    if (error) {
-      throw new Error('Failed to fetch room record: ' + error.message);
-    }
+    if (error) throw new Error('Failed to fetch room record: ' + error.message);
 
-    if (!data?.id) {
-      throw new Error('Room record not found.');
-    }
+    const fetchedUuid = (data as { uuid?: string | null } | null)?.uuid ?? null;
+    if (fetchedUuid && isUuid(fetchedUuid)) return fetchedUuid;
 
-    const roomId = String(data.id);
-
-    if (!isUuid(roomId)) {
-      throw new Error('Room UUID is missing. Please ensure the room record includes a UUID.');
-    }
-
-    return roomId;
+    throw new Error('Room UUID is missing. Please ensure the room record includes a UUID.');
   };
 
   const handleConfirmBooking = async () => {
@@ -217,6 +209,7 @@ export default function BookingModal({
             A confirmation email has been sent to <span className="font-medium">{customerEmail}</span>
           </p>
           <button
+            type="button"
             onClick={onClose}
             className="mt-6 px-8 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all font-medium"
           >
@@ -230,6 +223,7 @@ export default function BookingModal({
   return (
     <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
       <button
+        type="button"
         onClick={onClose}
         className="fixed top-6 right-6 text-gray-700 hover:text-gray-900 transition-colors z-10 bg-white rounded-full p-2 shadow-lg"
       >
@@ -339,7 +333,6 @@ export default function BookingModal({
                     value={bookingCheckIn}
                     min={today}
                     onChange={(e) => setBookingCheckIn(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
                     className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                   />
                 </div>
@@ -351,7 +344,6 @@ export default function BookingModal({
                     value={bookingCheckOut}
                     min={bookingCheckIn || today}
                     onChange={(e) => setBookingCheckOut(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
                     className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                   />
                 </div>
@@ -372,6 +364,7 @@ export default function BookingModal({
                 <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Number of Guests</label>
                 <div className="flex items-center justify-between bg-neutral-800 border border-neutral-700 rounded-lg px-6 py-4">
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       decrementGuests();
@@ -386,6 +379,7 @@ export default function BookingModal({
                     <span className="font-bold text-2xl">{bookingGuests}</span>
                   </div>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       incrementGuests();
@@ -431,7 +425,7 @@ export default function BookingModal({
                     <span className="text-white font-semibold">{formatCurrency(pricePerNight)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-400">{nights} night{s}</span>
+                    <span className="text-gray-400">{nights} night{nights !== 1 ? 's' : ''}</span>
                     <span className="text-white font-semibold">{formatCurrency(grandTotal)}</span>
                   </div>
                   <div className="flex justify-between items-center pt-4 border-t border-neutral-800">
@@ -520,6 +514,7 @@ export default function BookingModal({
               )}
 
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleConfirmBooking();
