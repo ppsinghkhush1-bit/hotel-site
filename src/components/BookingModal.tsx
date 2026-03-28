@@ -13,6 +13,7 @@ interface BookingModalProps {
   onClose: () => void;
   room: {
     id: string | number;
+    uuid?: string | null;
     name: string;
     image: string;
     description: string;
@@ -104,6 +105,16 @@ export default function BookingModal({
   const isUuid = (value: string) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
+  const resolveBookingRoomId = () => {
+    const roomUuid = typeof room.uuid === 'string' ? room.uuid.trim() : '';
+    if (roomUuid && isUuid(roomUuid)) return roomUuid;
+
+    const roomId = String(room.id).trim();
+    if (roomId && isUuid(roomId)) return roomId;
+
+    throw new Error('Room UUID is missing. Please ensure the room record includes a UUID.');
+  };
+
   const handleConfirmBooking = async () => {
     try {
       if (room.bookable === false) {
@@ -116,17 +127,13 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      const roomId = String(room.id);
-
-      if (!isUuid(roomId)) {
-        throw new Error('Room UUID is missing. Please ensure the room record includes a UUID.');
-      }
+      const bookingRoomId = resolveBookingRoomId();
 
       const { error: bookingError } = await supabase
         .from('bookings')
         .insert({
           hotel_id: '418d39b5-659d-4f0b-be4a-062ec24e22d9',
-          room_id: roomId,
+          room_id: bookingRoomId,
           guest_name: customerName,
           guest_email: customerEmail,
           guest_phone: customerPhone,
@@ -206,23 +213,13 @@ export default function BookingModal({
       <div className="relative h-[60vh] min-h-[500px]">
         <img src={room.image} alt={room.name} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
-
         <div className="absolute bottom-0 left-0 right-0 px-8 pb-12 text-white">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-5xl md:text-6xl font-serif mb-4">{room.name}</h1>
             <div className="flex items-center gap-8 text-sm uppercase tracking-widest">
-              <div className="flex items-center gap-2">
-                <Users size={18} />
-                <span>{room.maxGuests} Guests</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Bed size={18} />
-                <span>660 Ft²</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-3xl font-bold">{formatCurrency(pricePerNight)}</span>
-                <span className="text-base">/ Per Night</span>
-              </div>
+              <div className="flex items-center gap-2"><Users size={18} /><span>{room.maxGuests} Guests</span></div>
+              <div className="flex items-center gap-2"><Bed size={18} /><span>660 Ft²</span></div>
+              <div className="flex items-center gap-2"><span className="text-3xl font-bold">{formatCurrency(pricePerNight)}</span><span className="text-base">/ Per Night</span></div>
             </div>
           </div>
         </div>
@@ -268,7 +265,7 @@ export default function BookingModal({
               <h3 className="text-2xl font-serif mb-8 text-center uppercase tracking-wider">Complete Your Booking</h3>
 
               <div className="space-y-5 mb-6 relative z-10">
-                <div onClick={(e) => e.stopPropagation()}>
+                <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Check-In Date</label>
                   <input
                     type="date"
@@ -279,7 +276,7 @@ export default function BookingModal({
                   />
                 </div>
 
-                <div onClick={(e) => e.stopPropagation()}>
+                <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Check-Out Date</label>
                   <input
                     type="date"
@@ -300,60 +297,29 @@ export default function BookingModal({
                 </div>
               )}
 
-              <div className="mb-8" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-8">
                 <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Number of Guests</label>
                 <div className="flex items-center justify-between bg-neutral-800 border border-neutral-700 rounded-lg px-6 py-4">
-                  <button type="button" onClick={(e) => { e.stopPropagation(); decrementGuests(); }} disabled={bookingGuests <= 1} className="text-2xl text-white hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">−</button>
+                  <button type="button" onClick={decrementGuests} disabled={bookingGuests <= 1} className="text-2xl text-white hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">−</button>
                   <div className="flex items-center gap-3 text-white"><Users size={20} /><span className="font-bold text-2xl">{bookingGuests}</span></div>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); incrementGuests(); }} disabled={bookingGuests >= room.maxGuests} className="text-2xl text-white hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">+</button>
+                  <button type="button" onClick={incrementGuests} disabled={bookingGuests >= room.maxGuests} className="text-2xl text-white hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">+</button>
                 </div>
               </div>
 
-              {selectedAmenities.length > 0 && (
-                <div className="mb-8 pb-8 border-b border-neutral-800">
-                  <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-4">Included Services</h4>
-                  <div className="space-y-2">
-                    {selectedAmenities.map((amenity, index) => (
-                      <div key={index} className="flex items-center gap-2 text-sm text-gray-300">
-                        <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
-                        <span>{amenity.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {nights > 0 && (
-                <div className="space-y-4 mb-8 pb-8 border-b border-neutral-800">
-                  <div className="flex justify-between items-center text-sm"><span className="text-gray-400">Room Rate</span><span className="text-white">{formatCurrency(room.basePrice)} / night</span></div>
-                  {selectedAmenities.length > 0 && selectedAmenities.some(a => a.price > 0) && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-400">Amenities</span>
-                      <span className="text-white">{formatCurrency(selectedAmenities.reduce((sum, a) => sum + (Number(a?.price ?? 0)), 0))}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center text-sm pt-2 border-t border-neutral-700">
-                    <span className="text-gray-400">Price per Night</span>
-                    <span className="text-white font-semibold">{formatCurrency(pricePerNight)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-400">{nights} night{nights !== 1 ? 's' : ''}</span>
-                    <span className="text-white font-semibold">{formatCurrency(grandTotal)}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-4 border-t border-neutral-800">
-                    <span className="text-lg font-serif uppercase tracking-wider">Total Amount</span>
-                    <span className="text-3xl font-bold text-emerald-400">{formatCurrency(grandTotal)}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-5 mb-6" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-5 mb-6">
                 <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-4">Guest Information</h4>
+
                 <div>
                   <label className="block text-xs text-gray-400 mb-2">Full Name *</label>
                   <div className="relative">
                     <User size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
-                    <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Enter your full name" className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Enter your full name"
+                      className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                    />
                   </div>
                 </div>
 
@@ -361,7 +327,13 @@ export default function BookingModal({
                   <label className="block text-xs text-gray-400 mb-2">Email Address *</label>
                   <div className="relative">
                     <Mail size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
-                    <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="your@email.com" className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+                    <input
+                      type="email"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                    />
                   </div>
                 </div>
 
@@ -369,7 +341,13 @@ export default function BookingModal({
                   <label className="block text-xs text-gray-400 mb-2">Phone Number *</label>
                   <div className="relative">
                     <Phone size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
-                    <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="+91 XXXXX XXXXX" className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+                    <input
+                      type="tel"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="+91 XXXXX XXXXX"
+                      className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                    />
                   </div>
                 </div>
 
@@ -377,7 +355,13 @@ export default function BookingModal({
                   <label className="block text-xs text-gray-400 mb-2">Special Requests (Optional)</label>
                   <div className="relative">
                     <MessageSquare size={18} className="absolute left-3 top-3 text-gray-500 pointer-events-none" />
-                    <textarea value={specialRequests} onChange={(e) => setSpecialRequests(e.target.value)} placeholder="Any special requirements..." rows={3} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all resize-none" />
+                    <textarea
+                      value={specialRequests}
+                      onChange={(e) => setSpecialRequests(e.target.value)}
+                      placeholder="Any special requirements..."
+                      rows={3}
+                      className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all resize-none"
+                    />
                   </div>
                 </div>
               </div>
@@ -398,22 +382,11 @@ export default function BookingModal({
 
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleConfirmBooking();
-                }}
+                onClick={handleConfirmBooking}
                 disabled={!isFormValid || isSubmitting}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 font-semibold uppercase tracking-widest transition-all text-sm rounded-lg"
               >
-                {isSubmitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing Booking...
-                  </span>
-                ) : 'Confirm Booking'}
+                {isSubmitting ? 'Processing Booking...' : 'Confirm Booking'}
               </button>
             </div>
           </div>
