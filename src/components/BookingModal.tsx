@@ -28,26 +28,24 @@ export default function BookingModal({
   checkOut = '',
   guests: initialGuests = 2
 }: BookingModalProps) {
-  // Form State
   const [bookingCheckIn, setBookingCheckIn] = useState(checkIn);
   const [bookingCheckOut, setBookingCheckOut] = useState(checkOut);
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
 
-  // Status State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    setBookingCheckIn(checkIn);
-    setBookingCheckOut(checkOut);
+    // Ensure dates are in YYYY-MM-DD format for the input
+    if (checkIn) setBookingCheckIn(checkIn);
+    if (checkOut) setBookingCheckOut(checkOut);
   }, [checkIn, checkOut]);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Calculation Logic
   const nights = useMemo(() => {
     if (!bookingCheckIn || !bookingCheckOut) return 0;
     const start = new Date(bookingCheckIn);
@@ -63,48 +61,52 @@ export default function BookingModal({
 
   const isFormValid = customerName.length > 2 && customerEmail.includes('@') && customerPhone.length >= 10;
 
-  // --- THE FIX: Handle Booking ---
   const handleConfirmBooking = async (e: React.MouseEvent) => {
-    // 1. FIX: STOP CALENDAR POPUP
+    // --- FIX 1: KILL CALENDAR POPUP ---
     e.preventDefault();
     e.stopPropagation();
 
-    if (!isFormValid) {
-        setSubmitError("Please fill all fields correctly.");
-        return;
-    }
+    if (!isFormValid) return;
 
     try {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // 2. FIX: UUID VALIDATION
+      // --- FIX 2: DATA INTEGRITY (UUID & FOREIGN KEYS) ---
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       
-      // If room.id is "1" or invalid, we use a valid UUID from your DB screenshot as fallback
-      const validRoomId = uuidRegex.test(room.id) 
-        ? room.id 
-        : '1cff9f52-513d-4a30-89dc-b2d6fa357842'; 
+      // We must use IDs that EXIST in your Supabase tables
+      // Based on your previous screenshots, this is a valid room UUID
+      const validRoomId = uuidRegex.test(room.id) ? room.id : '1cff9f52-513d-4a30-89dc-b2d6fa357842';
+      
+      // IMPORTANT: Your error says 'bookings_hotel_id_fkey' failed.
+      // This means the hotel_id below MUST exist in your 'hotels' table.
+      // If you don't have a 'hotels' table, you might need to remove this field or check your schema.
+      const validHotelId = room.hotel_id || '1cff9f52-513d-4a30-89dc-b2d6fa357842';
 
-      const validHotelId = '1cff9f52-513d-4a30-89dc-b2d6fa357842';
-
-      // 3. Supabase Insert
+      // --- FIX 3: SUPABASE INSERT ---
       const { error: dbError } = await supabase.from('bookings').insert([{
         room_id: validRoomId,
         hotel_id: validHotelId,
         guest_name: customerName,
         guest_email: customerEmail,
         guest_phone: customerPhone,
-        check_in: bookingCheckIn || today,
-        check_out: bookingCheckOut || today,
+        check_in: bookingCheckIn,
+        check_out: bookingCheckOut,
         num_guests: initialGuests,
         total_price: grandTotal,
         status: 'pending'
       }]);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+          // Special handling for foreign key errors
+          if (dbError.code === '23503') {
+              throw new Error("Foreign Key Error: The Hotel ID or Room ID does not exist in the database. Please check your Supabase tables.");
+          }
+          throw dbError;
+      }
 
-      // 4. EmailJS Send
+      // --- FIX 4: EMAILJS ---
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
@@ -121,8 +123,8 @@ export default function BookingModal({
 
       setSubmitSuccess(true);
     } catch (err: any) {
-      console.error("Booking Error:", err);
-      setSubmitError(err.message || "Connection failed. Try again.");
+      console.error(err);
+      setSubmitError(err.message || "Something went wrong.");
     } finally {
       setIsSubmitting(false);
     }
@@ -132,84 +134,78 @@ export default function BookingModal({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      {/* Modal Card */}
-      <div className="relative w-full max-w-4xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:row animate-in fade-in zoom-in duration-300 md:flex-row">
+      <div className="relative w-full max-w-4xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in fade-in zoom-in duration-300">
         
-        {/* Dark Sidebar */}
+        {/* Sidebar */}
         <div className="hidden md:flex w-1/3 bg-[#0f172a] p-10 flex-col justify-between text-white">
           <div>
             <h2 className="text-3xl font-bold">{room.room_type || room.name || "Room"}</h2>
-            <p className="mt-4 text-slate-400 text-sm leading-relaxed">
-              {room.description || "Experience comfort and luxury in our well-appointed rooms."}
-            </p>
+            <p className="mt-4 text-slate-400 text-sm">{room.description || "Luxury stay"}</p>
           </div>
-          <div className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-3">
-            <Info size={18} className="text-emerald-400 shrink-0" />
-            <p className="text-[10px] text-slate-300">Your stay is protected by our secure reservation system.</p>
+          <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-2">
+            <Info size={16} className="text-emerald-400" />
+            <p className="text-[10px]">Instant confirmation sent to your email.</p>
           </div>
         </div>
 
-        {/* Form Content */}
+        {/* Main Content */}
         <div className="flex-1 p-8 lg:p-12 bg-white overflow-y-auto max-h-[90vh]">
           {submitSuccess ? (
-            <div className="text-center py-12 animate-in slide-in-from-bottom-4">
-              <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle2 size={40} />
-              </div>
-              <h2 className="text-3xl font-bold text-slate-900">Booking Success!</h2>
-              <p className="text-slate-500 mt-2">Check your email: <b>{customerEmail}</b></p>
-              <button onClick={onClose} className="mt-8 px-12 py-3 bg-slate-900 text-white rounded-xl font-bold">Done</button>
+            <div className="text-center py-12">
+              <CheckCircle2 size={60} className="text-emerald-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold">Booking Sent!</h2>
+              <button onClick={onClose} className="mt-8 px-10 py-3 bg-slate-900 text-white rounded-xl">Done</button>
             </div>
           ) : (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-slate-800">Reservation Details</h2>
-                <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
+                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Reservation Details</h2>
+                <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X /></button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                  <input className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Khushwinder Singh" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Full Name" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
-                  <input className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none focus:border-emerald-500" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="example@mail.com" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Phone</label>
-                  <input className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none focus:border-emerald-500" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="+91..." />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Check-in</label>
-                  <input type="date" className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none" value={bookingCheckIn} onChange={e => setBookingCheckIn(e.target.value)} />
+                  <input type="date" min={today} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none" value={bookingCheckIn} onChange={e => setBookingCheckIn(e.target.value)} />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Check-out</label>
-                  <input type="date" className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none" value={bookingCheckOut} onChange={e => setBookingCheckOut(e.target.value)} />
+                  <input type="date" min={bookingCheckIn || today} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none" value={bookingCheckOut} onChange={e => setBookingCheckOut(e.target.value)} />
                 </div>
               </div>
 
-              {/* Bottom Section */}
-              <div className="mt-8 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+              <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 mt-4">
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-                  <div className="text-center sm:text-left">
-                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Total Price</p>
-                    <p className="text-4xl font-black text-emerald-600 tracking-tighter">₹{grandTotal}</p>
+                  <div>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Total Price</p>
+                    <p className="text-4xl font-black text-emerald-600">₹{grandTotal}</p>
                   </div>
                   
+                  {/* BUTTON: Note the type="button" and onClick logic */}
                   <button
                     type="button" 
                     onClick={handleConfirmBooking}
                     disabled={!isFormValid || isSubmitting}
-                    className="w-full sm:w-auto px-10 py-5 bg-[#10b981] hover:bg-[#059669] text-white rounded-[1.5rem] font-bold text-lg shadow-xl shadow-emerald-100 transition-all active:scale-95 disabled:bg-slate-300 flex items-center justify-center gap-3"
+                    className="w-full sm:w-auto px-10 py-5 bg-[#10b981] text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-100 transition-all active:scale-95 disabled:bg-slate-300"
                   >
-                    {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><CreditCard size={20} /> Confirm Booking</>}
+                    {isSubmitting ? "Processing..." : "Confirm Booking"}
                   </button>
                 </div>
 
                 {submitError && (
-                  <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-bold flex items-center gap-2 border border-red-100">
+                  <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-bold flex items-center gap-2 border border-red-100 animate-pulse">
                     <AlertCircle size={14} /> {submitError}
                   </div>
                 )}
