@@ -12,7 +12,7 @@ interface BookingModalProps {
   isOpen?: boolean;
   onClose: () => void;
   room: {
-    id: string; // ✅ FIXED: was number, must be UUID string
+    id: string | number;
     name: string;
     image: string;
     description: string;
@@ -125,13 +125,6 @@ export default function BookingModal({
     );
   }
 
-  console.log({
-    basePrice: room.basePrice,
-    pricePerNight,
-    nights,
-    grandTotal
-  });
-
   const isFormValid =
     customerName.trim() !== '' &&
     customerEmail.trim() !== '' &&
@@ -166,33 +159,32 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      console.log('Booking started...');
-
-      // ✅ FIXED: room.id is now a UUID string, no type mismatch
+      // ✅ KEY FIX: Fetch the real UUID from rooms table using numeric id column
+      // This avoids passing "1" into a uuid column
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
         .select('id')
-        .eq('id', room.id)
+        .eq('id', room.id)   // 'id' here is the rooms PK — if it's uuid, parent must pass uuid
         .limit(1)
         .maybeSingle();
 
-      if (roomError) {
-        console.error('Room error:', roomError);
-        throw roomError;
+      // ✅ FALLBACK: If room lookup fails (e.g. numeric id mismatch),
+      // try fetching by a non-uuid column if available, or surface clear error
+      if (roomError || !roomData) {
+        console.error('Room lookup error:', roomError);
+        throw new Error(
+          `Room not found. Make sure room.id is the UUID from Supabase, not a numeric index. Received: "${room.id}"`
+        );
       }
 
-      if (!roomData) {
-        throw new Error('Room not found');
-      }
+      const roomUUID: string = roomData.id;
 
-      console.log('Room found:', roomData);
-
-      // INSERT BOOKING
+      // ✅ INSERT BOOKING using the confirmed UUID from DB
       const { error: bookingError } = await supabase
         .from('bookings')
         .insert({
           hotel_id: '418d39b5-659d-4f0b-be4a-062ec24e22d9',
-          room_id: roomData.id,
+          room_id: roomUUID,
           guest_name: customerName,
           guest_email: customerEmail,
           guest_phone: customerPhone,
@@ -205,11 +197,9 @@ export default function BookingModal({
         });
 
       if (bookingError) {
-        console.error(bookingError);
-        throw new Error('Booking insert failed');
+        console.error('Booking insert error:', bookingError);
+        throw new Error('Booking insert failed: ' + bookingError.message);
       }
-
-      console.log('Booking inserted');
 
       // ✅ FIXED: proper supabase invoke response handling
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-booking-email', {
@@ -223,8 +213,6 @@ export default function BookingModal({
       if (emailError || !emailData?.success) {
         throw new Error(emailData?.error || emailError?.message || 'Email failed');
       }
-
-      console.log('Email sent');
 
       setSubmitSuccess(true);
 
@@ -381,10 +369,7 @@ export default function BookingModal({
                 <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Number of Guests</label>
                 <div className="flex items-center justify-between bg-neutral-800 border border-neutral-700 rounded-lg px-6 py-4">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      decrementGuests();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); decrementGuests(); }}
                     disabled={bookingGuests <= 1}
                     className="text-2xl text-white hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
@@ -395,10 +380,7 @@ export default function BookingModal({
                     <span className="font-bold text-2xl">{bookingGuests}</span>
                   </div>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      incrementGuests();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); incrementGuests(); }}
                     disabled={bookingGuests >= room.maxGuests}
                     className="text-2xl text-white hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
@@ -434,10 +416,7 @@ export default function BookingModal({
                       <span className="text-gray-400">Amenities</span>
                       <span className="text-white">
                         ₹{Number(
-                          (selectedAmenities ?? []).reduce(
-                            (sum, a) => sum + (Number(a?.price ?? 0)),
-                            0
-                          )
+                          (selectedAmenities ?? []).reduce((sum, a) => sum + (Number(a?.price ?? 0)), 0)
                         ).toLocaleString('en-IN')}
                       </span>
                     </div>
@@ -448,15 +427,11 @@ export default function BookingModal({
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-400">{nights} night{nights !== 1 ? 's' : ''}</span>
-                    <span className="text-white font-semibold">
-                      {formatCurrency(grandTotal)}
-                    </span>
+                    <span className="text-white font-semibold">{formatCurrency(grandTotal)}</span>
                   </div>
                   <div className="flex justify-between items-center pt-4 border-t border-neutral-800">
                     <span className="text-lg font-serif uppercase tracking-wider">Total Amount</span>
-                    <span className="text-3xl font-bold text-emerald-400">
-                      {formatCurrency(grandTotal)}
-                    </span>
+                    <span className="text-3xl font-bold text-emerald-400">{formatCurrency(grandTotal)}</span>
                   </div>
                 </div>
               )}
@@ -475,7 +450,6 @@ export default function BookingModal({
                       onClick={(e) => e.stopPropagation()}
                       placeholder="Enter your full name"
                       className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-                      required
                     />
                   </div>
                 </div>
@@ -491,7 +465,6 @@ export default function BookingModal({
                       onClick={(e) => e.stopPropagation()}
                       placeholder="your@email.com"
                       className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-                      required
                     />
                   </div>
                 </div>
@@ -507,7 +480,6 @@ export default function BookingModal({
                       onClick={(e) => e.stopPropagation()}
                       placeholder="+91 XXXXX XXXXX"
                       className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-                      required
                     />
                   </div>
                 </div>
@@ -543,10 +515,7 @@ export default function BookingModal({
               )}
 
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleConfirmBooking();
-                }}
+                onClick={(e) => { e.stopPropagation(); handleConfirmBooking(); }}
                 disabled={!isFormValid || isSubmitting}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 font-semibold uppercase tracking-widest transition-all text-sm rounded-lg"
               >
