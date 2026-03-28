@@ -8,18 +8,21 @@ interface Amenity {
   included: boolean;
 }
 
+interface Room {
+  id: string | number;
+  uuid?: string;
+  name: string;
+  image: string;
+  description: string;
+  basePrice: number;
+  maxGuests: number;
+  bookable?: boolean;
+}
+
 interface BookingModalProps {
   isOpen?: boolean;
   onClose: () => void;
-  room: {
-    id: string | number;
-    name: string;
-    image: string;
-    description: string;
-    basePrice: number;
-    maxGuests: number;
-    bookable?: boolean;
-  };
+  room: Room;
   selectedAmenities?: Amenity[];
   checkIn?: string;
   checkOut?: string;
@@ -54,7 +57,6 @@ export default function BookingModal({
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // ✅ FIXED: formatCurrency already includes ₹ via Intl — never prepend ₹ manually
   const formatCurrency = (value: number | undefined | null): string => {
     if (value == null || !Number.isFinite(value)) return '₹0';
     return new Intl.NumberFormat('en-IN', {
@@ -87,6 +89,85 @@ export default function BookingModal({
     if (!pricePerNight || !nights) return 0;
     return pricePerNight * nights;
   }, [pricePerNight, nights]);
+
+  const isFormValid =
+    customerName.trim() !== '' &&
+    customerEmail.trim() !== '' &&
+    customerPhone.trim() !== '' &&
+    bookingCheckIn !== '' &&
+    bookingCheckOut !== '' &&
+    nights > 0 &&
+    Number.isFinite(grandTotal) &&
+    grandTotal > 0;
+
+  const incrementGuests = () => {
+    if (bookingGuests < room.maxGuests) {
+      setBookingGuests(prev => Math.min(prev + 1, room.maxGuests));
+    }
+  };
+
+  const decrementGuests = () => {
+    if (bookingGuests > 1) {
+      setBookingGuests(prev => prev - 1);
+    }
+  };
+
+  const handleConfirmBooking = async () => {
+    try {
+      if (room.bookable === false) {
+        setSubmitError('Room not available');
+        return;
+      }
+
+      if (!isFormValid) return;
+
+      setIsSubmitting(true);
+      setSubmitError(null);
+
+      const roomUUID = room.uuid ?? (typeof room.id === 'string' && room.id.includes('-') ? room.id : null);
+
+      if (!roomUUID) {
+        throw new Error('Room UUID is missing. Please ensure the room record includes a UUID.');
+      }
+
+      const { error: bookingError } = await supabase
+        .from('bookings')
+        .insert({
+          hotel_id: '418d39b5-659d-4f0b-be4a-062ec24e22d9',
+          room_id: roomUUID,
+          guest_name: customerName,
+          guest_email: customerEmail,
+          guest_phone: customerPhone,
+          check_in: bookingCheckIn,
+          check_out: bookingCheckOut,
+          num_guests: bookingGuests,
+          total_price: grandTotal,
+          status: 'pending',
+          special_requests: specialRequests || ''
+        });
+
+      if (bookingError) throw new Error('Booking failed: ' + bookingError.message);
+
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-booking-email', {
+        body: {
+          customerName,
+          customerEmail,
+          roomName: room.name
+        }
+      });
+
+      if (emailError || !emailData?.success) {
+        throw new Error(emailData?.error || emailError?.message || 'Email failed');
+      }
+
+      setSubmitSuccess(true);
+    } catch (err: unknown) {
+      console.error('FULL ERROR:', err);
+      setSubmitError((err as Error).message || 'Something went wrong');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -127,117 +208,6 @@ export default function BookingModal({
     );
   }
 
-  const isFormValid =
-    customerName.trim() !== '' &&
-    customerEmail.trim() !== '' &&
-    customerPhone.trim() !== '' &&
-    bookingCheckIn !== '' &&
-    bookingCheckOut !== '' &&
-    nights > 0 &&
-    Number.isFinite(grandTotal) &&
-    grandTotal > 0;
-
-  const incrementGuests = () => {
-    if (bookingGuests < room.maxGuests) {
-      setBookingGuests(prev => Math.min(prev + 1, room.maxGuests));
-    }
-  };
-
-  const decrementGuests = () => {
-    if (bookingGuests > 1) {
-      setBookingGuests(bookingGuests - 1);
-    }
-  };
-
-  const handleConfirmBooking = async () => {
-    try {
-      if (room.bookable === false) {
-        setSubmitError('Room not available');
-        return;
-      }
-
-      if (!isFormValid) return;
-
-      setIsSubmitting(true);
-      setSubmitError(null);
-
-      // ✅ FIXED: Skip the room lookup entirely.
-      // Use room.id directly — your rooms table uses a numeric PK,
-      // but bookings.room_id is uuid. So we fetch the uuid via a separate column.
-      // If your rooms table has a uuid column separate from the numeric id,
-      // fetch it here. Otherwise pass room.id directly as-is.
-      const { data: roomData, error: roomError } = await supabase
-        .from('rooms')
-        .select('id, uuid')   // select both — use whichever is the real UUID
-        .eq('id', room.id)
-        .limit(1)
-        .maybeSingle();
-
-      if (roomError || !roomData) {
-        // ✅ FALLBACK: If rooms table id IS the uuid (not numeric), insert directly
-        const { error: bookingError } = await supabase
-          .from('bookings')
-          .insert({
-            hotel_id: '418d39b5-659d-4f0b-be4a-062ec24e22d9',
-            room_id: String(room.id),
-            guest_name: customerName,
-            guest_email: customerEmail,
-            guest_phone: customerPhone,
-            check_in: bookingCheckIn,
-            check_out: bookingCheckOut,
-            num_guests: bookingGuests,
-            total_price: grandTotal,
-            status: 'pending',
-            special_requests: specialRequests || ''
-          });
-
-        if (bookingError) throw new Error('Booking failed: ' + bookingError.message);
-      } else {
-        // Use uuid column if exists, otherwise fall back to id
-        const roomUUID = roomData.uuid || roomData.id;
-
-        const { error: bookingError } = await supabase
-          .from('bookings')
-          .insert({
-            hotel_id: '418d39b5-659d-4f0b-be4a-062ec24e22d9',
-            room_id: roomUUID,
-            guest_name: customerName,
-            guest_email: customerEmail,
-            guest_phone: customerPhone,
-            check_in: bookingCheckIn,
-            check_out: bookingCheckOut,
-            num_guests: bookingGuests,
-            total_price: grandTotal,
-            status: 'pending',
-            special_requests: specialRequests || ''
-          });
-
-        if (bookingError) throw new Error('Booking failed: ' + bookingError.message);
-      }
-
-      // ✅ FIXED: proper supabase invoke response handling
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-booking-email', {
-        body: {
-          customerName,
-          customerEmail,
-          roomName: room.name
-        }
-      });
-
-      if (emailError || !emailData?.success) {
-        throw new Error(emailData?.error || emailError?.message || 'Email failed');
-      }
-
-      setSubmitSuccess(true);
-
-    } catch (err: unknown) {
-      console.error('FULL ERROR:', err);
-      setSubmitError((err as Error).message || 'Something went wrong');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
       <button
@@ -267,7 +237,6 @@ export default function BookingModal({
                 <Bed size={18} />
                 <span>660 Ft²</span>
               </div>
-              {/* ✅ FIXED: formatCurrency already includes ₹, no manual ₹ prefix */}
               <div className="flex items-center gap-2">
                 <span className="text-3xl font-bold">{formatCurrency(pricePerNight)}</span>
                 <span className="text-base">/ Per Night</span>
@@ -344,26 +313,24 @@ export default function BookingModal({
               <h3 className="text-2xl font-serif mb-8 text-center uppercase tracking-wider">Complete Your Booking</h3>
 
               <div className="space-y-5 mb-6 relative z-10">
-                <div onClick={(e) => e.stopPropagation()}>
+                <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Check-In Date</label>
                   <input
                     type="date"
                     value={bookingCheckIn}
                     min={today}
                     onChange={(e) => setBookingCheckIn(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
                     className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                   />
                 </div>
 
-                <div onClick={(e) => e.stopPropagation()}>
+                <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Check-Out Date</label>
                   <input
                     type="date"
                     value={bookingCheckOut}
                     min={bookingCheckIn || today}
                     onChange={(e) => setBookingCheckOut(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
                     className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                   />
                 </div>
@@ -380,11 +347,11 @@ export default function BookingModal({
                 </div>
               )}
 
-              <div className="mb-8" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-8">
                 <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Number of Guests</label>
                 <div className="flex items-center justify-between bg-neutral-800 border border-neutral-700 rounded-lg px-6 py-4">
                   <button
-                    onClick={(e) => { e.stopPropagation(); decrementGuests(); }}
+                    onClick={decrementGuests}
                     disabled={bookingGuests <= 1}
                     className="text-2xl text-white hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
@@ -395,7 +362,7 @@ export default function BookingModal({
                     <span className="font-bold text-2xl">{bookingGuests}</span>
                   </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); incrementGuests(); }}
+                    onClick={incrementGuests}
                     disabled={bookingGuests >= room.maxGuests}
                     className="text-2xl text-white hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
@@ -420,20 +387,15 @@ export default function BookingModal({
 
               {nights > 0 && (
                 <div className="space-y-4 mb-8 pb-8 border-b border-neutral-800">
-                  {/* ✅ FIXED: use toLocaleString only, no ₹ prefix + formatCurrency combo */}
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-400">Room Rate</span>
-                    <span className="text-white">
-                      {formatCurrency(room.basePrice)} / night
-                    </span>
+                    <span className="text-white">{formatCurrency(room.basePrice)} / night</span>
                   </div>
                   {selectedAmenities.length > 0 && selectedAmenities.some(a => a.price > 0) && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-400">Amenities</span>
                       <span className="text-white">
-                        {formatCurrency(
-                          selectedAmenities.reduce((sum, a) => sum + (Number(a?.price ?? 0)), 0)
-                        )}
+                        {formatCurrency(selectedAmenities.reduce((sum, a) => sum + (Number(a?.price ?? 0)), 0))}
                       </span>
                     </div>
                   )}
@@ -452,7 +414,7 @@ export default function BookingModal({
                 </div>
               )}
 
-              <div className="space-y-5 mb-6" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-5 mb-6">
                 <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-4">Guest Information</h4>
 
                 <div>
@@ -463,7 +425,6 @@ export default function BookingModal({
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
                       placeholder="Enter your full name"
                       className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                     />
@@ -478,7 +439,6 @@ export default function BookingModal({
                       type="email"
                       value={customerEmail}
                       onChange={(e) => setCustomerEmail(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
                       placeholder="your@email.com"
                       className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                     />
@@ -493,7 +453,6 @@ export default function BookingModal({
                       type="tel"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
                       placeholder="+91 XXXXX XXXXX"
                       className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                     />
@@ -507,7 +466,6 @@ export default function BookingModal({
                     <textarea
                       value={specialRequests}
                       onChange={(e) => setSpecialRequests(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
                       placeholder="Any special requirements..."
                       rows={3}
                       className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all resize-none"
@@ -531,7 +489,7 @@ export default function BookingModal({
               )}
 
               <button
-                onClick={(e) => { e.stopPropagation(); handleConfirmBooking(); }}
+                onClick={handleConfirmBooking}
                 disabled={!isFormValid || isSubmitting}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 font-semibold uppercase tracking-widest transition-all text-sm rounded-lg"
               >
