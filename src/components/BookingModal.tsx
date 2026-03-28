@@ -13,7 +13,6 @@ interface BookingModalProps {
   onClose: () => void;
   room: {
     id: string | number;
-    uuid?: string | null;
     name: string;
     image: string;
     description: string;
@@ -76,10 +75,7 @@ export default function BookingModal({
 
   const pricePerNight = useMemo(() => {
     const base = Number(room.basePrice) || 0;
-    const amenitiesTotal = selectedAmenities.reduce(
-      (sum, amenity) => sum + (Number(amenity.price) || 0),
-      0
-    );
+    const amenitiesTotal = selectedAmenities.reduce((sum, amenity) => sum + (Number(amenity.price) || 0), 0);
     return base + amenitiesTotal;
   }, [room.basePrice, selectedAmenities]);
 
@@ -110,21 +106,33 @@ export default function BookingModal({
     }
   };
 
-  const resolveRoomUUID = async () => {
-    if (room.uuid) return room.uuid;
-    if (typeof room.id === 'string' && room.id.includes('-')) return room.id;
+  const isUuid = (value: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+  const resolveRoomIdForBooking = async () => {
+    if (typeof room.id === 'string' && isUuid(room.id)) return room.id;
 
     const { data, error } = await supabase
       .from('rooms')
-      .select('uuid')
+      .select('id')
       .eq('id', room.id)
-      .limit(1)
       .maybeSingle();
 
-    if (error) throw new Error('Failed to fetch room UUID: ' + error.message);
-    if (!data?.uuid) throw new Error('Room UUID is missing. Please ensure the room record includes a UUID.');
+    if (error) {
+      throw new Error('Failed to fetch room record: ' + error.message);
+    }
 
-    return data.uuid;
+    if (!data?.id) {
+      throw new Error('Room record not found.');
+    }
+
+    const roomId = String(data.id);
+
+    if (!isUuid(roomId)) {
+      throw new Error('Room UUID is missing. Please ensure the room record includes a UUID.');
+    }
+
+    return roomId;
   };
 
   const handleConfirmBooking = async () => {
@@ -139,13 +147,13 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      const roomUUID = await resolveRoomUUID();
+      const bookingRoomId = await resolveRoomIdForBooking();
 
       const { error: bookingError } = await supabase
         .from('bookings')
         .insert({
           hotel_id: '418d39b5-659d-4f0b-be4a-062ec24e22d9',
-          room_id: roomUUID,
+          room_id: bookingRoomId,
           guest_name: customerName,
           guest_email: customerEmail,
           guest_phone: customerPhone,
@@ -408,17 +416,13 @@ export default function BookingModal({
                 <div className="space-y-4 mb-8 pb-8 border-b border-neutral-800">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-400">Room Rate</span>
-                    <span className="text-white">
-                      {formatCurrency(room.basePrice)} / night
-                    </span>
+                    <span className="text-white">{formatCurrency(room.basePrice)} / night</span>
                   </div>
                   {selectedAmenities.length > 0 && selectedAmenities.some(a => a.price > 0) && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-400">Amenities</span>
                       <span className="text-white">
-                        {formatCurrency(
-                          selectedAmenities.reduce((sum, a) => sum + (Number(a?.price ?? 0)), 0)
-                        )}
+                        {formatCurrency(selectedAmenities.reduce((sum, a) => sum + (Number(a?.price ?? 0)), 0))}
                       </span>
                     </div>
                   )}
@@ -427,7 +431,7 @@ export default function BookingModal({
                     <span className="text-white font-semibold">{formatCurrency(pricePerNight)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-400">{nights} night{nights !== 1 ? 's' : ''}</span>
+                    <span className="text-gray-400">{nights} night{s}</span>
                     <span className="text-white font-semibold">{formatCurrency(grandTotal)}</span>
                   </div>
                   <div className="flex justify-between items-center pt-4 border-t border-neutral-800">
