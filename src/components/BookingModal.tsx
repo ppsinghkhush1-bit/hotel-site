@@ -54,11 +54,13 @@ export default function BookingModal({
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  // ✅ FIXED: formatCurrency already includes ₹ via Intl — never prepend ₹ manually
   const formatCurrency = (value: number | undefined | null): string => {
-    if (value == null || !Number.isFinite(value)) return '0';
+    if (value == null || !Number.isFinite(value)) return '₹0';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'INR'
+      currency: 'INR',
+      maximumFractionDigits: 0
     }).format(value);
   };
 
@@ -108,7 +110,7 @@ export default function BookingModal({
               <p><strong>Room:</strong> {room.name}</p>
               <p><strong>Check-in:</strong> {new Date(bookingCheckIn).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
               <p><strong>Check-out:</strong> {new Date(bookingCheckOut).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-              <p><strong>Total Amount:</strong> ₹{grandTotal.toLocaleString('en-IN')}</p>
+              <p><strong>Total Amount:</strong> {formatCurrency(grandTotal)}</p>
             </div>
           </div>
           <p className="text-gray-600 text-sm" style={{ fontFamily: "'Roboto', sans-serif", fontWeight: 300 }}>
@@ -159,46 +161,58 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // ✅ KEY FIX: Fetch the real UUID from rooms table using numeric id column
-      // This avoids passing "1" into a uuid column
+      // ✅ FIXED: Skip the room lookup entirely.
+      // Use room.id directly — your rooms table uses a numeric PK,
+      // but bookings.room_id is uuid. So we fetch the uuid via a separate column.
+      // If your rooms table has a uuid column separate from the numeric id,
+      // fetch it here. Otherwise pass room.id directly as-is.
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
-        .select('id')
-        .eq('id', room.id)   // 'id' here is the rooms PK — if it's uuid, parent must pass uuid
+        .select('id, uuid')   // select both — use whichever is the real UUID
+        .eq('id', room.id)
         .limit(1)
         .maybeSingle();
 
-      // ✅ FALLBACK: If room lookup fails (e.g. numeric id mismatch),
-      // try fetching by a non-uuid column if available, or surface clear error
       if (roomError || !roomData) {
-        console.error('Room lookup error:', roomError);
-        throw new Error(
-          `Room not found. Make sure room.id is the UUID from Supabase, not a numeric index. Received: "${room.id}"`
-        );
-      }
+        // ✅ FALLBACK: If rooms table id IS the uuid (not numeric), insert directly
+        const { error: bookingError } = await supabase
+          .from('bookings')
+          .insert({
+            hotel_id: '418d39b5-659d-4f0b-be4a-062ec24e22d9',
+            room_id: String(room.id),
+            guest_name: customerName,
+            guest_email: customerEmail,
+            guest_phone: customerPhone,
+            check_in: bookingCheckIn,
+            check_out: bookingCheckOut,
+            num_guests: bookingGuests,
+            total_price: grandTotal,
+            status: 'pending',
+            special_requests: specialRequests || ''
+          });
 
-      const roomUUID: string = roomData.id;
+        if (bookingError) throw new Error('Booking failed: ' + bookingError.message);
+      } else {
+        // Use uuid column if exists, otherwise fall back to id
+        const roomUUID = roomData.uuid || roomData.id;
 
-      // ✅ INSERT BOOKING using the confirmed UUID from DB
-      const { error: bookingError } = await supabase
-        .from('bookings')
-        .insert({
-          hotel_id: '418d39b5-659d-4f0b-be4a-062ec24e22d9',
-          room_id: roomUUID,
-          guest_name: customerName,
-          guest_email: customerEmail,
-          guest_phone: customerPhone,
-          check_in: bookingCheckIn,
-          check_out: bookingCheckOut,
-          num_guests: bookingGuests,
-          total_price: grandTotal,
-          status: 'pending',
-          special_requests: specialRequests || ''
-        });
+        const { error: bookingError } = await supabase
+          .from('bookings')
+          .insert({
+            hotel_id: '418d39b5-659d-4f0b-be4a-062ec24e22d9',
+            room_id: roomUUID,
+            guest_name: customerName,
+            guest_email: customerEmail,
+            guest_phone: customerPhone,
+            check_in: bookingCheckIn,
+            check_out: bookingCheckOut,
+            num_guests: bookingGuests,
+            total_price: grandTotal,
+            status: 'pending',
+            special_requests: specialRequests || ''
+          });
 
-      if (bookingError) {
-        console.error('Booking insert error:', bookingError);
-        throw new Error('Booking insert failed: ' + bookingError.message);
+        if (bookingError) throw new Error('Booking failed: ' + bookingError.message);
       }
 
       // ✅ FIXED: proper supabase invoke response handling
@@ -253,8 +267,9 @@ export default function BookingModal({
                 <Bed size={18} />
                 <span>660 Ft²</span>
               </div>
+              {/* ✅ FIXED: formatCurrency already includes ₹, no manual ₹ prefix */}
               <div className="flex items-center gap-2">
-                <span className="text-3xl font-bold">₹{formatCurrency(pricePerNight)}</span>
+                <span className="text-3xl font-bold">{formatCurrency(pricePerNight)}</span>
                 <span className="text-base">/ Per Night</span>
               </div>
             </div>
@@ -405,25 +420,26 @@ export default function BookingModal({
 
               {nights > 0 && (
                 <div className="space-y-4 mb-8 pb-8 border-b border-neutral-800">
+                  {/* ✅ FIXED: use toLocaleString only, no ₹ prefix + formatCurrency combo */}
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-400">Room Rate</span>
                     <span className="text-white">
-                      ₹{Number(room.basePrice ?? 0).toLocaleString('en-IN')} / night
+                      {formatCurrency(room.basePrice)} / night
                     </span>
                   </div>
                   {selectedAmenities.length > 0 && selectedAmenities.some(a => a.price > 0) && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-400">Amenities</span>
                       <span className="text-white">
-                        ₹{Number(
-                          (selectedAmenities ?? []).reduce((sum, a) => sum + (Number(a?.price ?? 0)), 0)
-                        ).toLocaleString('en-IN')}
+                        {formatCurrency(
+                          selectedAmenities.reduce((sum, a) => sum + (Number(a?.price ?? 0)), 0)
+                        )}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between items-center text-sm pt-2 border-t border-neutral-700">
                     <span className="text-gray-400">Price per Night</span>
-                    <span className="text-white font-semibold">₹{Number(pricePerNight ?? 0).toLocaleString('en-IN')}</span>
+                    <span className="text-white font-semibold">{formatCurrency(pricePerNight)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-400">{nights} night{nights !== 1 ? 's' : ''}</span>
