@@ -54,25 +54,20 @@ export default function BookingModal({
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // ✅ HELPER FUNCTION - SAFE CURRENCY FORMATTING
   const formatCurrency = (value: number | undefined | null): string => {
-  if (value == null || !Number.isFinite(value)) return '0';
-
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR'
-  }).format(value);
-};
+    if (value == null || !Number.isFinite(value)) return '0';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR'
+    }).format(value);
+  };
 
   const nights = useMemo(() => {
     if (!bookingCheckIn || !bookingCheckOut) return 0;
-
     const start = new Date(`${bookingCheckIn}T00:00:00`);
     const end = new Date(`${bookingCheckOut}T00:00:00`);
-
     if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
     if (start >= end) return 0;
-
     const diffTime = end.getTime() - start.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }, [bookingCheckIn, bookingCheckOut]);
@@ -91,7 +86,6 @@ export default function BookingModal({
     return pricePerNight * nights;
   }, [pricePerNight, nights]);
 
-  // ✅ FIXED: Proper early return
   if (!isOpen) return null;
 
   if (submitSuccess) {
@@ -138,18 +132,15 @@ export default function BookingModal({
     grandTotal
   });
 
-  const isFormValid = useMemo(() => {
-    return (
-      customerName.trim() !== '' &&
-      customerEmail.trim() !== '' &&
-      customerPhone.trim() !== '' &&
-      bookingCheckIn !== '' &&
-      bookingCheckOut !== '' &&
-      nights > 0 &&
-      Number.isFinite(grandTotal) &&
-      grandTotal > 0
-    );
-  }, [customerName, customerEmail, customerPhone, bookingCheckIn, bookingCheckOut, nights, grandTotal]);
+  const isFormValid =
+    customerName.trim() !== '' &&
+    customerEmail.trim() !== '' &&
+    customerPhone.trim() !== '' &&
+    bookingCheckIn !== '' &&
+    bookingCheckOut !== '' &&
+    nights > 0 &&
+    Number.isFinite(grandTotal) &&
+    grandTotal > 0;
 
   const incrementGuests = () => {
     if (bookingGuests < room.maxGuests) {
@@ -177,7 +168,7 @@ export default function BookingModal({
 
       console.log('Booking started...');
 
-      // ✅ SAFE ROOM FETCH
+      // SAFE ROOM FETCH
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
         .select('id')
@@ -196,7 +187,7 @@ export default function BookingModal({
 
       console.log('Room found:', roomData);
 
-      // ✅ INSERT BOOKING
+      // INSERT BOOKING
       const { error: bookingError } = await supabase
         .from('bookings')
         .insert({
@@ -220,30 +211,22 @@ export default function BookingModal({
 
       console.log('Booking inserted');
 
-      // ✅ EMAIL
-      await supabase.functions.invoke('send-booking-email', {
+      // ✅ FIXED: Use supabase invoke response correctly
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-booking-email', {
         body: {
           customerName,
           customerEmail,
           roomName: room.name
         }
       });
-      let result = null;
 
-      try {
-        result = await response.json();
-      } catch (e) {
-        console.error('EMAIL JSON ERROR:', e);
-        throw new Error('Invalid email response');
-      }
-
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.error || 'Email failed');
+      if (emailError || !emailData?.success) {
+        throw new Error(emailData?.error || emailError?.message || 'Email failed');
       }
 
       console.log('Email sent');
 
-      // ✅ SUCCESS
+      // SUCCESS
       setSubmitSuccess(true);
 
     } catch (err: unknown) {
@@ -444,18 +427,20 @@ export default function BookingModal({
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-400">Room Rate</span>
                     <span className="text-white">
-  ₹{Number(room.basePrice ?? 0).toLocaleString('en-IN')} / night
-</span>
+                      ₹{Number(room.basePrice ?? 0).toLocaleString('en-IN')} / night
+                    </span>
                   </div>
                   {selectedAmenities.length > 0 && selectedAmenities.some(a => a.price > 0) && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-400">Amenities</span>
-                      ₹{Number(
-  (selectedAmenities ?? []).reduce(
-    (sum, a) => sum + (Number(a?.price ?? 0)),
-    0
-  )
-).toLocaleString('en-IN')}
+                      <span className="text-white">
+                        ₹{Number(
+                          (selectedAmenities ?? []).reduce(
+                            (sum, a) => sum + (Number(a?.price ?? 0)),
+                            0
+                          )
+                        ).toLocaleString('en-IN')}
+                      </span>
                     </div>
                   )}
                   <div className="flex justify-between items-center text-sm pt-2 border-t border-neutral-700">
@@ -465,14 +450,14 @@ export default function BookingModal({
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-400">{nights} night{nights !== 1 ? 's' : ''}</span>
                     <span className="text-white font-semibold">
-  {formatCurrency(grandTotal)}
-</span>
+                      {formatCurrency(grandTotal)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center pt-4 border-t border-neutral-800">
                     <span className="text-lg font-serif uppercase tracking-wider">Total Amount</span>
                     <span className="text-3xl font-bold text-emerald-400">
-  {formatCurrency(grandTotal)}
-</span>
+                      {formatCurrency(grandTotal)}
+                    </span>
                   </div>
                 </div>
               )}
