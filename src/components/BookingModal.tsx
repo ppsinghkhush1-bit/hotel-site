@@ -1,6 +1,6 @@
 import {
-  X, Calendar, Users, Bed, Wifi, Coffee, Car, Tv, Wind,
-  Mail, Phone, User, MessageSquare, CheckCircle2, AlertCircle, IndianRupee
+  X, Calendar, User, CheckCircle2, AlertCircle, 
+  Mail, Phone, MessageSquare, CreditCard, Info
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
@@ -30,15 +30,16 @@ export default function BookingModal({
   checkOut = '',
   guests: initialGuests = 2
 }: BookingModalProps) {
+  // Form State
   const [bookingCheckIn, setBookingCheckIn] = useState(checkIn);
   const [bookingCheckOut, setBookingCheckOut] = useState(checkOut);
   const [bookingGuests, setBookingGuests] = useState(initialGuests);
-
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
 
+  // Status State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -51,6 +52,7 @@ export default function BookingModal({
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  // Calculations
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -68,20 +70,30 @@ export default function BookingModal({
   }, [bookingCheckIn, bookingCheckOut]);
 
   const pricePerNight = useMemo(() => {
-    const base = Number(room.basePrice) || 0;
+    const base = Number(room?.basePrice) || 0;
     const amenities = selectedAmenities.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
     return base + amenities;
-  }, [room.basePrice, selectedAmenities]);
+  }, [room?.basePrice, selectedAmenities]);
 
   const grandTotal = useMemo(() => (nights > 0 ? pricePerNight * nights : 0), [pricePerNight, nights]);
 
-  const isFormValid = customerName.trim() && customerEmail.includes('@') && customerPhone.length >= 10 && nights > 0;
+  const isFormValid = 
+    customerName.trim().length > 2 && 
+    customerEmail.includes('@') && 
+    customerPhone.length >= 10 && 
+    nights > 0;
 
   const handleConfirmBooking = async () => {
     try {
       if (!isFormValid) return;
       setIsSubmitting(true);
       setSubmitError(null);
+
+      // --- CRITICAL FIX: UUID VALIDATION ---
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(room.id)) {
+        throw new Error(`Technical Error: Room ID "${room.id}" is not a valid UUID. Please ensure your database uses UUIDs.`);
+      }
 
       const { error: bookingError } = await supabase.from('bookings').insert([{
         room_id: room.id,
@@ -93,18 +105,20 @@ export default function BookingModal({
         num_guests: bookingGuests,
         total_price: grandTotal,
         status: 'pending',
-        special_requests: specialRequests
+        special_requests: specialRequests || ''
       }]);
 
       if (bookingError) throw bookingError;
 
+      // Optional: Trigger Email
       await supabase.functions.invoke('send-booking-email', {
         body: { customerName, customerEmail, roomName: room.name }
-      });
+      }).catch(() => console.log("Email function not configured, skipping..."));
 
       setSubmitSuccess(true);
     } catch (err: any) {
-      setSubmitError(err.message || 'Booking failed. Please check your connection.');
+      console.error("Booking failed:", err);
+      setSubmitError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -113,149 +127,156 @@ export default function BookingModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      {/* Glass Backdrop */}
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity" onClick={onClose} />
 
-      {/* Modal Container */}
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
+      {/* Main Modal */}
+      <div className="relative w-full max-w-5xl max-h-[95vh] bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in fade-in zoom-in duration-300">
         
-        {/* Header */}
-        <div className="p-6 border-b flex justify-between items-center bg-slate-50">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">{submitSuccess ? 'Success!' : 'Complete Your Booking'}</h2>
-            {!submitSuccess && <p className="text-slate-500 text-sm">{room.name} • {formatCurrency(pricePerNight)}/night</p>}
+        {/* Left Section: Visuals & Info (Hidden on mobile scroll) */}
+        <div className="hidden lg:flex w-1/3 bg-slate-900 p-10 flex-col justify-between text-white relative overflow-hidden">
+          <div className="relative z-10">
+            <div className="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold tracking-widest uppercase mb-4">
+              Booking Details
+            </div>
+            <h2 className="text-3xl font-bold leading-tight">{room.name}</h2>
+            <p className="mt-4 text-slate-400 text-sm leading-relaxed">{room.description}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
-            <X size={24} />
-          </button>
+
+          <div className="relative z-10 space-y-4">
+            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Info size={20} />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Instant Confirmation</p>
+                <p className="text-sm font-medium">Secure your stay now</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Abstract background glow */}
+          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-emerald-500/20 rounded-full blur-[80px]" />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 lg:p-10">
-          {submitSuccess ? (
-            <div className="text-center py-12 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle2 size={48} />
+        {/* Right Section: Form */}
+        <div className="flex-1 flex flex-col bg-white overflow-y-auto">
+          {/* Mobile Header */}
+          <div className="flex items-center justify-between p-6 border-b lg:hidden">
+            <h3 className="font-bold">{room.name}</h3>
+            <button onClick={onClose} className="p-2 bg-slate-100 rounded-full"><X size={20}/></button>
+          </div>
+
+          <div className="p-6 lg:p-12">
+            {submitSuccess ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center animate-in slide-in-from-bottom-8">
+                <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
+                  <CheckCircle2 size={56} />
+                </div>
+                <h3 className="text-3xl font-bold text-slate-900">Booking Received!</h3>
+                <p className="mt-4 text-slate-600 max-w-xs text-lg">
+                  We've sent a confirmation email to <span className="font-bold text-slate-900">{customerEmail}</span>.
+                </p>
+                <button onClick={onClose} className="mt-10 w-full max-w-xs py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all">
+                  Back to Explore
+                </button>
               </div>
-              <h3 className="text-3xl font-bold text-slate-900">Pack your bags!</h3>
-              <p className="mt-2 text-slate-600">Confirmation sent to <span className="font-semibold">{customerEmail}</span></p>
-              <button onClick={onClose} className="mt-8 px-8 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all">
-                Close Window
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              {/* Left Column: Form */}
-              <div className="space-y-6">
-                <section>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-                    <User size={16} /> Guest Details
-                  </h3>
-                  <div className="space-y-3">
-                    <input 
-                      type="text" placeholder="Full Name" 
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                      value={customerName} onChange={e => setCustomerName(e.target.value)}
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            ) : (
+              <div className="space-y-8">
+                <div className="flex justify-between items-start">
+                  <div className="hidden lg:block">
+                    <h2 className="text-2xl font-bold text-slate-900">Guest Information</h2>
+                    <p className="text-slate-500">Fill in your details to finalize the reservation.</p>
+                  </div>
+                  <button onClick={onClose} className="hidden lg:flex p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <X size={24} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Full Name</label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                       <input 
-                        type="email" placeholder="Email Address" 
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                        className="w-full pl-12 pr-4 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                        placeholder="e.g. Rahul Sharma"
+                        value={customerName} onChange={e => setCustomerName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input 
+                        type="email"
+                        className="w-full pl-12 pr-4 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                        placeholder="rahul@example.com"
                         value={customerEmail} onChange={e => setCustomerEmail(e.target.value)}
                       />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Phone Number</label>
+                    <div className="relative">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                       <input 
-                        type="tel" placeholder="Phone Number" 
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                        type="tel"
+                        className="w-full pl-12 pr-4 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                        placeholder="+91 00000 00000"
                         value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
                       />
                     </div>
                   </div>
-                </section>
 
-                <section>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-                    <Calendar size={16} /> Schedule
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="relative">
-                      <label className="text-[10px] font-bold text-slate-400 absolute top-2 left-4 uppercase">Check-in</label>
-                      <input 
-                        type="date" min={today}
-                        className="w-full pt-6 pb-2 px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
-                        value={bookingCheckIn} onChange={e => setBookingCheckIn(e.target.value)}
-                      />
-                    </div>
-                    <div className="relative">
-                      <label className="text-[10px] font-bold text-slate-400 absolute top-2 left-4 uppercase">Check-out</label>
-                      <input 
-                        type="date" min={bookingCheckIn || today}
-                        className="w-full pt-6 pb-2 px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
-                        value={bookingCheckOut} onChange={e => setBookingCheckOut(e.target.value)}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Check-in</label>
+                    <input 
+                      type="date" min={today}
+                      className="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                      value={bookingCheckIn} onChange={e => setBookingCheckIn(e.target.value)}
+                    />
                   </div>
-                </section>
-                
-                <textarea 
-                  placeholder="Special requests (optional)..."
-                  rows={3}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-                  value={specialRequests} onChange={e => setSpecialRequests(e.target.value)}
-                />
-              </div>
 
-              {/* Right Column: Summary Card */}
-              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col">
-                <h3 className="font-bold text-slate-900 mb-4">Summary</h3>
-                <div className="space-y-3 text-sm flex-1">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Stay Duration</span>
-                    <span className="font-medium">{nights} Nights</span>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Check-out</label>
+                    <input 
+                      type="date" min={bookingCheckIn || today}
+                      className="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                      value={bookingCheckOut} onChange={e => setBookingCheckOut(e.target.value)}
+                    />
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Price per Night</span>
-                    <span className="font-medium">{formatCurrency(pricePerNight)}</span>
-                  </div>
-                  {selectedAmenities.length > 0 && (
-                    <div className="pt-2 border-t border-slate-200">
-                      <p className="text-[10px] uppercase font-bold text-slate-400 mb-2">Selected Add-ons</p>
-                      {selectedAmenities.map((a, i) => (
-                        <div key={i} className="flex justify-between text-xs mb-1">
-                          <span className="text-slate-600">{a.name}</span>
-                          <span>{a.included ? 'Included' : formatCurrency(a.price)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
-                <div className="mt-6 pt-6 border-t-2 border-dashed border-slate-200">
-                  <div className="flex justify-between items-end mb-6">
-                    <span className="text-slate-900 font-bold text-lg">Total Amount</span>
-                    <span className="text-3xl font-black text-emerald-600">{formatCurrency(grandTotal)}</span>
+                <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                      <p className="text-slate-500 text-sm">Total for <span className="font-bold text-slate-900">{nights} Nights</span></p>
+                      <h4 className="text-3xl font-black text-emerald-600">{formatCurrency(grandTotal)}</h4>
+                    </div>
+                    <button
+                      onClick={handleConfirmBooking}
+                      disabled={!isFormValid || isSubmitting}
+                      className="w-full sm:w-auto px-10 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-200 transition-all flex items-center justify-center gap-3"
+                    >
+                      {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><CreditCard size={20}/> Confirm Booking</>}
+                    </button>
                   </div>
-
-                  <button
-                    onClick={handleConfirmBooking}
-                    disabled={!isFormValid || isSubmitting}
-                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-xl font-bold text-lg shadow-lg shadow-emerald-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      'Confirm & Pay'
-                    )}
-                  </button>
                   
                   {submitError && (
-                    <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-xs flex items-center gap-2 border border-red-100">
-                      <AlertCircle size={14} /> {submitError}
+                    <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-xl text-sm flex items-start gap-3 border border-red-100">
+                      <AlertCircle className="shrink-0 mt-0.5" size={18} />
+                      <span>{submitError}</span>
                     </div>
                   )}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
