@@ -12,7 +12,7 @@ interface BookingModalProps {
   isOpen?: boolean;
   onClose: () => void;
   room: {
-    id: number;
+    id: string; // ✅ FIXED: was number, must be UUID string
     name: string;
     image: string;
     description: string;
@@ -168,7 +168,7 @@ export default function BookingModal({
 
       console.log('Booking started...');
 
-      // SAFE ROOM FETCH
+      // ✅ FIXED: room.id is now a UUID string, no type mismatch
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
         .select('id')
@@ -211,7 +211,7 @@ export default function BookingModal({
 
       console.log('Booking inserted');
 
-      // ✅ FIXED: Use supabase invoke response correctly
+      // ✅ FIXED: proper supabase invoke response handling
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-booking-email', {
         body: {
           customerName,
@@ -226,12 +226,11 @@ export default function BookingModal({
 
       console.log('Email sent');
 
-      // SUCCESS
       setSubmitSuccess(true);
 
     } catch (err: unknown) {
       console.error('FULL ERROR:', err);
-      setSubmitError((err as Error).message || 'Something broke');
+      setSubmitError((err as Error).message || 'Something went wrong');
     } finally {
       setIsSubmitting(false);
     }
