@@ -14,7 +14,6 @@ interface BookingModalProps {
   room: {
     id: string | number;
     uuid?: string | null;
-    booking_id?: string | null;
     name: string;
     image: string;
     description: string;
@@ -106,12 +105,16 @@ export default function BookingModal({
   const isUuid = (value: string) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
-  const resolveBookingRoomId = () => {
-    const candidates = [room.uuid, room.booking_id, String(room.id)];
-    for (const value of candidates) {
-      const clean = typeof value === 'string' ? value.trim() : '';
-      if (clean && isUuid(clean)) return clean;
+  const resolveRoomUuid = () => {
+    const candidates = [
+      typeof room.uuid === 'string' ? room.uuid.trim() : '',
+      String(room.id).trim()
+    ].filter(Boolean);
+
+    for (const candidate of candidates) {
+      if (isUuid(candidate)) return candidate;
     }
+
     throw new Error('Room UUID is missing. Please ensure the room record includes a UUID.');
   };
 
@@ -127,13 +130,13 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      const bookingRoomId = resolveBookingRoomId();
+      const roomUuid = resolveRoomUuid();
 
       const { error: bookingError } = await supabase
         .from('bookings')
         .insert({
           hotel_id: '418d39b5-659d-4f0b-be4a-062ec24e22d9',
-          room_id: bookingRoomId,
+          room_id: roomUuid,
           guest_name: customerName,
           guest_email: customerEmail,
           guest_phone: customerPhone,
@@ -237,7 +240,37 @@ export default function BookingModal({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-          <div className="lg:col-span-2">{/* unchanged left section */}</div>
+          <div className="lg:col-span-2">
+            <section className="mb-12">
+              <h2 className="text-3xl font-serif mb-6 text-gray-900">Description</h2>
+              <p className="text-gray-700 leading-relaxed mb-4">{room.description}</p>
+              <p className="text-gray-700 leading-relaxed">
+                A cozy and comfortable room well suited for business travelers and gives you an aesthetic view of this city.
+                High ceiling, well-ventilated rooms equipped with TV, coffee maker, hairdryer, newspaper and 24/7 service from our staff, will enable you to enjoy your stay.
+              </p>
+            </section>
+
+            <section className="mb-12">
+              <h2 className="text-3xl font-serif mb-6 text-gray-900">Room Services</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 text-gray-700"><Tv size={20} className="text-gray-500" /><span>Television</span></div>
+                <div className="flex items-center gap-3 text-gray-700"><Wifi size={20} className="text-gray-500" /><span>Wifi</span></div>
+                <div className="flex items-center gap-3 text-gray-700"><Wind size={20} className="text-gray-500" /><span>No Smoking</span></div>
+                <div className="flex items-center gap-3 text-gray-700"><Car size={20} className="text-gray-500" /><span>Car Booking</span></div>
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-3xl font-serif mb-4 text-gray-900">Booking Details</h2>
+              <div className="space-y-3 text-sm text-gray-700">
+                <div className="flex items-start gap-3"><Coffee size={18} className="text-gray-500 mt-0.5 flex-shrink-0" /><span>The rates are inclusive of Buffet breakfast.</span></div>
+                <div className="flex items-start gap-3"><Calendar size={18} className="text-gray-500 mt-0.5 flex-shrink-0" /><span>24 hr Check-in / Check out.</span></div>
+                <div className="flex items-start gap-3"><Users size={18} className="text-gray-500 mt-0.5 flex-shrink-0" /><span>12 noon Check-in / Check out for Group Arrival.</span></div>
+                <div className="flex items-start gap-3"><span className="text-gray-500 mt-0.5 flex-shrink-0">₹</span><span>Taxes as applicable</span></div>
+                <div className="flex items-start gap-3"><Users size={18} className="text-gray-500 mt-0.5 flex-shrink-0" /><span>Extra person above 10 years are charge 1500 Net (Inclusive Breakfast).</span></div>
+              </div>
+            </section>
+          </div>
 
           <div className="lg:col-span-1">
             <div className="bg-neutral-900 text-white p-6 sm:p-8 lg:sticky lg:top-6 w-full lg:max-w-md max-h-screen lg:max-h-screen overflow-y-auto rounded-lg">
@@ -255,8 +288,73 @@ export default function BookingModal({
                 </div>
               </div>
 
-              {/* keep the rest of your UI exactly the same, only buttons are type="button" */}
-              {/* ...reuse your existing JSX below unchanged... */}
+              {bookingCheckIn && bookingCheckOut && nights > 0 && (
+                <div className="mb-6 p-4 bg-neutral-800 rounded-lg border border-neutral-700">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400">Duration</span>
+                    <span className="text-white font-semibold">{nights} night{nights !== 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-8">
+                <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Number of Guests</label>
+                <div className="flex items-center justify-between bg-neutral-800 border border-neutral-700 rounded-lg px-6 py-4">
+                  <button type="button" onClick={decrementGuests} disabled={bookingGuests <= 1} className="text-2xl text-white hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">−</button>
+                  <div className="flex items-center gap-3 text-white"><Users size={20} /><span className="font-bold text-2xl">{bookingGuests}</span></div>
+                  <button type="button" onClick={incrementGuests} disabled={bookingGuests >= room.maxGuests} className="text-2xl text-white hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">+</button>
+                </div>
+              </div>
+
+              <div className="space-y-5 mb-6">
+                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-4">Guest Information</h4>
+
+                <div>
+                  <label className="block text-xs text-gray-400 mb-2">Full Name *</label>
+                  <div className="relative">
+                    <User size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
+                    <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Enter your full name" className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 mb-2">Email Address *</label>
+                  <div className="relative">
+                    <Mail size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
+                    <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="your@email.com" className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 mb-2">Phone Number *</label>
+                  <div className="relative">
+                    <Phone size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
+                    <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="+91 XXXXX XXXXX" className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 mb-2">Special Requests (Optional)</label>
+                  <div className="relative">
+                    <MessageSquare size={18} className="absolute left-3 top-3 text-gray-500 pointer-events-none" />
+                    <textarea value={specialRequests} onChange={(e) => setSpecialRequests(e.target.value)} placeholder="Any special requirements..." rows={3} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all resize-none" />
+                  </div>
+                </div>
+              </div>
+
+              {submitError && (
+                <div className="mb-6 p-4 bg-red-900/30 border border-red-700/50 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <h4 className="text-red-300 font-semibold text-sm mb-1">Booking Failed</h4>
+                      <p className="text-red-200 text-xs leading-relaxed">{submitError}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="button"
