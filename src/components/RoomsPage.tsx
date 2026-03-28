@@ -1,64 +1,219 @@
 import { useState, useEffect } from 'react';
-import { Users, MapPin, Phone, Mail, Star, ShieldCheck, Zap } from 'lucide-react';
+import { Users } from 'lucide-react';
 import BookingModal from './BookingModal';
+import RoomDetailsModal from './RoomDetailsModal';
+
+interface Room {
+  id: number;
+  name: string;
+  basePrice: number;
+  duration: string;
+  image: string;
+  galleryImages: string[];
+  description: string;
+  maxGuests: number;
+  available: boolean;
+}
 
 export default function RoomsPage() {
-  const [rooms, setRooms] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  // ✅ BREAKFAST STATE
   const [breakfast, setBreakfast] = useState<{ [roomId: number]: boolean }>({});
 
   useEffect(() => {
-    const data = [
-      { id: 1, name: "Standard Room", basePrice: 1500, image: "/10.jpg", description: "Affordable and comfortable room.", maxGuests: 2, available: true },
-      { id: 2, name: "Deluxe Room", basePrice: 1700, image: "/de1.jpeg", description: "Spacious deluxe room with premium interior.", maxGuests: 2, available: true },
-      { id: 3, name: "Luxury Room", basePrice: 2500, image: "/de1.jpeg", description: "High-end features and design.", maxGuests: 3, available: true }
+    const data: Room[] = [
+      {
+        id: 1,
+        name: "Standard Room",
+        basePrice: 1500,
+        duration: "24 hours",
+        image: "/10.jpg",
+        galleryImages: [
+          "/10.jpg",
+          "/9.jpg",
+          "/standard2.png",
+          "/image copy.png"
+        ],
+        description: "Affordable and comfortable room with essential facilities.",
+        maxGuests: 2,
+        available: true
+      },
+      {
+        id: 2,
+        name: "Deluxe Room",
+        basePrice: 1700,
+        duration: "24 hours",
+        image: "/de1.jpeg",
+        galleryImages: [
+          "/de1.jpeg",
+          "/de2.jpeg",
+          "/de3.jpeg",
+          "/de4.jpeg"
+        ],
+        description: "Spacious deluxe room with premium interior and comfort.",
+        maxGuests: 2,
+        available: true
+      },
+      {
+        id: 3,
+        name: "Luxury Room",
+        basePrice: 2500,
+        duration: "24 hours",
+        image: "/de1.jpeg",
+        galleryImages: ["/de1.jpeg"],
+        description: "Luxury room with high-end features and design.",
+        maxGuests: 3,
+        available: false
+      }
     ];
+
     setRooms(data);
   }, []);
 
-  const handleBookNow = (room: any) => {
-    const finalPrice = room.basePrice + (breakfast[room.id] ? 200 : 0);
-    setSelectedRoom({ ...room, basePrice: finalPrice });
-    setIsModalOpen(true); // Yeh line modal kholegi
+  // ✅ TOGGLE BREAKFAST
+  const toggleBreakfast = (roomId: number) => {
+    setBreakfast(prev => ({
+      ...prev,
+      [roomId]: !prev[roomId]
+    }));
+  };
+
+  // ✅ BOOK
+  const handleBookNow = (room: Room) => {
+    const finalPrice =
+      room.basePrice + (breakfast[room.id] ? 200 : 0);
+
+    setSelectedRoom({
+      ...room,
+      basePrice: finalPrice,
+      selectedAmenitiesList: breakfast[room.id]
+        ? [{ name: "Breakfast", price: 200, included: false }]
+        : []
+    });
+
+    setShowBookingModal(true);
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header with Address */}
-      <header className="py-12 px-4 text-center border-b">
-        <h1 className="text-5xl font-serif italic mb-2">Hotel Green Garden</h1>
-        <p className="text-neutral-500 text-sm">Opp. Govt. ITI College, Civil Lines, Ludhiana, Punjab 141001</p>
-        <div className="flex justify-center gap-4 mt-4 text-xs font-bold text-emerald-600">
-           <span>📞 07814 91779</span>
-           <span>✉️ hotelgreengarden0112@gmail.com</span>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <h1 className="text-3xl font-bold text-center mb-10">Our Rooms</h1>
 
-      <div className="max-w-5xl mx-auto py-12 px-4 space-y-8">
-        {rooms.map((room) => (
-          <div key={room.id} className="border rounded-[2rem] overflow-hidden flex flex-col md:flex-row shadow-sm">
-            <img src={room.image} className="md:w-1/3 h-64 object-cover" alt={room.name} />
-            <div className="p-8 flex-1">
-              <h2 className="text-3xl font-serif mb-2">{room.name}</h2>
-              <p className="text-2xl font-black text-emerald-600 mb-6">₹{room.basePrice + (breakfast[room.id] ? 200 : 0)}</p>
-              <button 
-                onClick={() => handleBookNow(room)}
-                className="bg-black text-white px-10 py-4 rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-emerald-600 transition-all"
-              >
-                Book Now
-              </button>
+      <div className="max-w-6xl mx-auto space-y-8">
+        {rooms.map((room) => {
+          const price =
+            room.basePrice + (breakfast[room.id] ? 200 : 0);
+
+          return (
+            <div key={room.id} className="bg-white rounded-2xl shadow overflow-hidden">
+              <div className="grid md:grid-cols-3">
+
+                {/* IMAGE */}
+                <div className="relative h-64">
+                  <img
+                    src={room.image}
+                    alt={room.name}
+                    className="w-full h-full object-cover"
+                  />
+
+                  {!room.available && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <span className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold">
+                        Under Maintenance
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* CONTENT */}
+                <div className="md:col-span-2 p-6 flex flex-col justify-between">
+
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">{room.name}</h2>
+                    <p className="text-gray-600 mb-4">{room.description}</p>
+
+                    <div className="flex items-center gap-2 text-gray-600 mb-4">
+                      <Users size={18} />
+                      <span>Up to {room.maxGuests} guests</span>
+                    </div>
+
+                    {/* PRICE */}
+                    <div className="text-3xl font-bold text-emerald-600 mb-4">
+                      ₹{price}
+                    </div>
+
+                    {/* BREAKFAST BUTTON */}
+                    <button
+                      onClick={() => toggleBreakfast(room.id)}
+                      disabled={!room.available}
+                      className={`mb-4 px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                        breakfast[room.id]
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-white text-gray-700 border-gray-300'
+                      }`}
+                    >
+                      {breakfast[room.id]
+                        ? "✓ Breakfast Added (+₹200)"
+                        : "+ Add Breakfast ₹200"}
+                    </button>
+                  </div>
+
+                  {/* BUTTONS */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setSelectedRoom(room);
+                        setShowDetailsModal(true);
+                      }}
+                      className="px-5 py-2 border border-emerald-600 text-emerald-600 rounded-lg"
+                    >
+                      View Details
+                    </button>
+
+                    <button
+                      onClick={() => handleBookNow(room)}
+                      disabled={!room.available}
+                      className={`px-6 py-2 rounded-lg ${
+                        room.available
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                      }`}
+                    >
+                      {room.available ? "Book Now" : "Not Available"}
+                    </button>
+                  </div>
+
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* MODAL CALLING */}
-      {selectedRoom && (
-        <BookingModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          room={selectedRoom} 
+      {/* BOOKING MODAL */}
+      {showBookingModal && selectedRoom && (
+        <BookingModal
+          room={selectedRoom}
+          selectedAmenities={selectedRoom.selectedAmenitiesList || []}
+          checkIn=""
+          checkOut=""
+          guests={2}
+          onClose={() => setShowBookingModal(false)}
+        />
+      )}
+
+      {/* DETAILS MODAL */}
+      {showDetailsModal && selectedRoom && (
+        <RoomDetailsModal
+          room={selectedRoom}
+          onClose={() => setShowDetailsModal(false)}
+          onBookNow={() => {
+            setShowDetailsModal(false);
+            handleBookNow(selectedRoom);
+          }}
         />
       )}
     </div>
