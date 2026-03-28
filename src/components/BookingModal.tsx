@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, Calendar, Users, Bed, Mail, Phone, User, CheckCircle2, 
-  Loader2, Star, Zap, ShieldCheck, Smartphone, ShieldAlert,
-  ArrowRight, Wifi, Coffee, Utensils, ChevronLeft,
-  CreditCard, Wind, Maximize, Shield, Camera, Car
+  Loader2, Star, Zap, ShieldCheck, Smartphone, 
+  ArrowRight, Wifi, Coffee, Wind, Shield
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import emailjs from '@emailjs/browser';
 
-// --- CONFIGURATION (STRICT SYNC) ---
+// --- CONFIGURATION ---
 const CONFIG = {
   EMAILJS: {
     SERVICE_ID: 'service_12y6xre',
@@ -33,29 +32,34 @@ export default function BookingModal({ isOpen, onClose, room, checkIn: initialIn
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- AUTO-FETCH RESET ---
-  // Jab bhi naya room click hoga, modal purana data saaf kar dega
+  // Modal open hote hi reset logic
   useEffect(() => {
     if (isOpen) {
+      document.body.style.overflow = 'hidden'; // Scroll stop
       setIsSuccess(false);
       setError(null);
       setCurrentStep(1);
+    } else {
+      document.body.style.overflow = 'unset'; // Scroll start
     }
-  }, [room, isOpen]);
+  }, [isOpen, room]);
 
-  // --- PRICE CALCULATION ---
+  // Price Calculation
   const nights = useMemo(() => {
     if (!bookingIn || !bookingOut) return 1;
-    const diff = Math.ceil((new Date(bookingOut).getTime() - new Date(bookingIn).getTime()) / (1000 * 60 * 60 * 24));
+    const start = new Date(bookingIn);
+    const end = new Date(bookingOut);
+    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 1;
   }, [bookingIn, bookingOut]);
 
-  const totalPrice = (room?.basePrice || room?.price_per_night || 0) * nights;
+  const pricePerNight = room?.basePrice || room?.price_per_night || 0;
+  const totalPrice = pricePerNight * nights;
 
-  // --- FINAL SUBMIT LOGIC ---
+  // Final Submit to DB and Email
   const handleFinalSubmit = async () => {
-    if (!guestDetails.name || !guestDetails.phone) {
-      setError("Please enter Guest Name and Phone.");
+    if (!guestDetails.name || !guestDetails.phone || !guestDetails.email) {
+      setError("Please fill all guest details.");
       return;
     }
 
@@ -63,16 +67,9 @@ export default function BookingModal({ isOpen, onClose, room, checkIn: initialIn
       setIsSubmitting(true);
       setError(null);
 
-      // 1. Get Correct UUID from Supabase for the Clicked Room
-      const { data: dbRoom } = await supabase
-        .from('rooms')
-        .select('id')
-        .ilike('room_type', (room.name || room.room_type).trim())
-        .single();
-
-      // 2. Insert Booking into Supabase
+      // 1. Database Entry
       const { error: dbError } = await supabase.from('bookings').insert({
-        room_id: dbRoom?.id || room.id,
+        room_id: room?.id,
         hotel_id: CONFIG.HOTEL_ID,
         guest_name: guestDetails.name,
         guest_email: guestDetails.email,
@@ -85,23 +82,20 @@ export default function BookingModal({ isOpen, onClose, room, checkIn: initialIn
 
       if (dbError) throw dbError;
 
-      // 3. EmailJS Sync (Matches your Screenshot Template)
-      const emailData = {
+      // 2. EmailJS Sync (As per your screenshot)
+      await emailjs.send(CONFIG.EMAILJS.SERVICE_ID, CONFIG.EMAILJS.TEMPLATE_ID, {
         guest_name: guestDetails.name,
         guest_email: guestDetails.email,
         guest_phone: guestDetails.phone,
-        room_name: room.name || room.room_type,
+        room_name: room?.name || room?.room_type,
         check_in: bookingIn,
         check_out: bookingOut,
         total_price: totalPrice
-      };
-
-      await emailjs.send(CONFIG.EMAILJS.SERVICE_ID, CONFIG.EMAILJS.TEMPLATE_ID, emailData, CONFIG.EMAILJS.PUBLIC_KEY);
+      }, CONFIG.EMAILJS.PUBLIC_KEY);
 
       setIsSuccess(true);
     } catch (err: any) {
-      setError("System Busy: Email sent but DB sync delayed.");
-      console.error(err);
+      setError("Sync Error: " + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -110,98 +104,83 @@ export default function BookingModal({ isOpen, onClose, room, checkIn: initialIn
   if (!isOpen || !room) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-0 md:p-6 overflow-hidden animate-in fade-in duration-300">
-      <div className="bg-white w-full max-w-6xl h-full md:h-[85vh] md:rounded-[3rem] shadow-2xl flex flex-col lg:flex-row overflow-hidden relative transition-all">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="bg-white w-full max-w-6xl rounded-[2.5rem] shadow-2xl flex flex-col lg:flex-row overflow-hidden relative min-h-[600px] animate-in fade-in zoom-in duration-300">
         
-        {/* Step 1: Left Visual Side (Room Branding) */}
-        <div className="lg:w-5/12 relative bg-neutral-900 overflow-hidden">
+        {/* Left: Room Branding Section */}
+        <div className="lg:w-1/2 relative min-h-[300px] bg-neutral-900">
           <img 
             src={room.image || room.image_url} 
-            className="absolute inset-0 w-full h-full object-cover opacity-60 hover:scale-110 transition-transform duration-1000" 
-            alt="luxury room" 
+            className="absolute inset-0 w-full h-full object-cover opacity-60" 
+            alt="room" 
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-black/40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
           
-          <div className="absolute bottom-12 left-12 right-12 z-10">
-            <div className="flex gap-1 text-emerald-400 mb-4">
+          <div className="absolute bottom-10 left-10 right-10 z-10">
+            <div className="flex gap-1 text-emerald-400 mb-2">
               {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}
             </div>
-            <h2 className="text-6xl font-serif italic text-white tracking-tighter leading-none mb-4">
+            <h2 className="text-5xl font-serif italic text-white mb-4 leading-none">
               {room.name || room.room_type}
             </h2>
-            <div className="flex flex-wrap gap-3">
-              <span className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full text-[10px] font-bold text-white uppercase">Garden View</span>
-              <span className="bg-emerald-600 px-4 py-2 rounded-full text-[10px] font-bold text-white uppercase">Verified Stay</span>
+            <div className="flex gap-4">
+               <div className="flex items-center gap-2 text-[10px] font-bold text-white uppercase opacity-80"><Wifi size={14}/> Free WiFi</div>
+               <div className="flex items-center gap-2 text-[10px] font-bold text-white uppercase opacity-80"><Coffee size={14}/> Breakfast</div>
             </div>
           </div>
-          
-          <button onClick={onClose} className="absolute top-8 left-8 p-3 bg-white/10 hover:bg-white hover:text-black text-white rounded-full backdrop-blur-md transition-all z-20 md:hidden">
-            <X size={20} />
+
+          <button onClick={onClose} className="absolute top-6 left-6 p-2 bg-white/20 hover:bg-white text-white hover:text-black rounded-full transition-all md:hidden">
+            <X size={24} />
           </button>
         </div>
 
-        {/* Step 2: Right Booking Engine */}
+        {/* Right: Modern Booking Engine */}
         <div className="flex-1 flex flex-col bg-neutral-50 relative">
           <header className="p-8 border-b bg-white flex justify-between items-center">
-            <div className="flex items-center gap-6">
-              <button onClick={onClose} className="hidden md:flex p-3 hover:bg-neutral-100 rounded-full transition-colors"><X size={20} /></button>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Reservation Stage</p>
-                <div className="flex gap-2">
-                  <div className={`h-1.5 w-8 rounded-full ${currentStep >= 1 ? 'bg-emerald-500' : 'bg-neutral-200'}`} />
-                  <div className={`h-1.5 w-8 rounded-full ${currentStep >= 2 ? 'bg-emerald-500' : 'bg-neutral-200'}`} />
-                </div>
-              </div>
+            <div className="flex items-center gap-4">
+              <button onClick={onClose} className="hidden md:block p-2 hover:bg-neutral-100 rounded-full transition-colors"><X size={24} /></button>
+              <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400">Step {currentStep} of 2</h3>
             </div>
-            <Zap size={24} className="text-emerald-500 fill-emerald-500" />
+            <Zap className="text-emerald-500 fill-emerald-500" />
           </header>
 
-          <main className="flex-1 p-8 lg:p-16 overflow-y-auto">
+          <main className="flex-1 p-8 lg:p-12">
             {isSuccess ? (
-              <div className="text-center py-12 animate-in zoom-in duration-500">
-                <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8">
-                  <CheckCircle2 size={48} />
+              <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
+                <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center animate-bounce">
+                  <CheckCircle2 size={40} />
                 </div>
-                <h3 className="text-4xl font-serif italic mb-4">Booking Initialized!</h3>
-                <p className="text-neutral-500 mb-10 max-w-sm mx-auto font-medium">We've sent the details to {guestDetails.email}. The hotel will contact you for final confirmation.</p>
-                <button onClick={onClose} className="w-full max-w-xs bg-black text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-emerald-600 transition-all">Back to Gallery</button>
+                <h4 className="text-3xl font-serif italic text-neutral-900">Reservation Confirmed!</h4>
+                <p className="text-neutral-500 max-w-sm">We've sent the booking voucher to {guestDetails.email}.</p>
+                <button onClick={onClose} className="bg-black text-white px-10 py-4 rounded-xl font-bold uppercase text-xs tracking-widest hover:scale-105 transition-all">Close Modal</button>
               </div>
             ) : (
-              <div className="max-w-xl mx-auto space-y-10">
+              <div className="max-w-md mx-auto space-y-8">
                 {currentStep === 1 ? (
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-4xl font-serif italic text-neutral-900">Stay Duration</h3>
-                      <p className="text-neutral-400 text-sm mt-1">Select your dates to calculate final stay value.</p>
-                    </div>
+                  <div className="space-y-6">
+                    <h4 className="text-3xl font-serif italic">Stay Dates</h4>
                     <div className="grid grid-cols-2 gap-4">
-                      <DateBox label="Check-In" value={bookingIn} onChange={setBookingIn} />
-                      <DateBox label="Check-Out" value={bookingOut} onChange={setBookingOut} />
+                      <div className="bg-white p-4 rounded-2xl border border-neutral-200 shadow-sm">
+                        <label className="text-[9px] font-black text-neutral-400 uppercase block mb-1">Check-In</label>
+                        <input type="date" value={bookingIn} onChange={e => setBookingIn(e.target.value)} className="w-full bg-transparent font-bold text-sm outline-none" />
+                      </div>
+                      <div className="bg-white p-4 rounded-2xl border border-neutral-200 shadow-sm">
+                        <label className="text-[9px] font-black text-neutral-400 uppercase block mb-1">Check-Out</label>
+                        <input type="date" value={bookingOut} onChange={e => setBookingOut(e.target.value)} className="w-full bg-transparent font-bold text-sm outline-none" />
+                      </div>
                     </div>
-                    <div className="bg-neutral-900 text-white p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
-                       <div className="relative z-10 flex justify-between items-end">
-                         <div>
-                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2">Total Payable</p>
-                            <h4 className="text-6xl font-black italic tracking-tighter">₹{totalPrice.toLocaleString()}</h4>
-                         </div>
-                         <div className="text-right opacity-40">
-                            <p className="text-[10px] font-bold uppercase">{nights} Nights Stay</p>
-                            <p className="text-[10px] font-bold uppercase">No Hidden Fees</p>
-                         </div>
-                       </div>
+                    <div className="bg-neutral-900 p-8 rounded-[2rem] text-white shadow-xl">
+                       <p className="text-[10px] font-bold text-emerald-400 uppercase mb-2">Estimated Total</p>
+                       <p className="text-5xl font-black italic tracking-tighter">₹{totalPrice.toLocaleString()}</p>
+                       <p className="text-[10px] opacity-40 mt-4 uppercase font-bold tracking-widest">{nights} Night(s) Reservation</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-8 animate-in slide-in-from-right duration-500">
-                    <div>
-                      <h3 className="text-4xl font-serif italic text-neutral-900">Guest Details</h3>
-                      <p className="text-neutral-400 text-sm mt-1">Identity required for secure room reservation.</p>
-                    </div>
-                    <div className="space-y-4">
-                      <LuxeInput icon={<User size={18}/>} placeholder="Guest Full Name" value={guestDetails.name} onChange={(v) => setGuestDetails({...guestDetails, name: v})} />
-                      <LuxeInput icon={<Smartphone size={18}/>} placeholder="WhatsApp Number" value={guestDetails.phone} onChange={(v) => setGuestDetails({...guestDetails, phone: v})} />
-                      <LuxeInput icon={<Mail size={18}/>} placeholder="Email (For Booking Voucher)" value={guestDetails.email} onChange={(v) => setGuestDetails({...guestDetails, email: v})} />
-                    </div>
+                  <div className="space-y-4">
+                    <h4 className="text-3xl font-serif italic mb-6">Guest Information</h4>
+                    <input type="text" placeholder="Full Name" value={guestDetails.name} onChange={e => setGuestDetails({...guestDetails, name: e.target.value})} className="w-full p-5 bg-white border border-neutral-200 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+                    <input type="tel" placeholder="Mobile Number" value={guestDetails.phone} onChange={e => setGuestDetails({...guestDetails, phone: e.target.value})} className="w-full p-5 bg-white border border-neutral-200 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+                    <input type="email" placeholder="Email Address" value={guestDetails.email} onChange={e => setGuestDetails({...guestDetails, email: e.target.value})} className="w-full p-5 bg-white border border-neutral-200 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
                   </div>
                 )}
               </div>
@@ -209,61 +188,21 @@ export default function BookingModal({ isOpen, onClose, room, checkIn: initialIn
           </main>
 
           {!isSuccess && (
-            <footer className="p-8 bg-white border-t flex justify-between items-center lg:px-16">
+            <footer className="p-8 bg-white border-t flex justify-between items-center">
+              <button onClick={() => currentStep > 1 && setCurrentStep(1)} className={`text-xs font-black uppercase tracking-widest text-neutral-400 hover:text-black ${currentStep === 1 && 'invisible'}`}>Back</button>
+              {error && <p className="text-[10px] text-red-500 font-bold uppercase">{error}</p>}
               <button 
-                onClick={() => currentStep > 1 && setCurrentStep(1)} 
-                className={`text-xs font-black uppercase tracking-widest text-neutral-400 hover:text-black transition-all ${currentStep === 1 && 'invisible'}`}
-              >
-                Back
-              </button>
-              
-              {error && <span className="text-[10px] font-bold text-red-500 uppercase animate-pulse">{error}</span>}
-
-              <button 
-                onClick={currentStep === 1 ? () => setCurrentStep(2) : handleFinalSubmit}
+                onClick={currentStep === 1 ? () => setCurrentStep(2) : handleFinalSubmit} 
                 disabled={isSubmitting}
-                className="bg-emerald-600 hover:bg-neutral-900 text-white px-12 py-6 rounded-2xl font-black uppercase text-xs tracking-[0.2em] flex items-center gap-3 transition-all shadow-xl active:scale-95"
+                className="bg-emerald-600 hover:bg-black text-white px-10 py-5 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center gap-2 transition-all active:scale-95"
               >
-                {isSubmitting ? <Loader2 className="animate-spin" /> : currentStep === 1 ? "Next Step" : "Confirm Booking"}
+                {isSubmitting ? <Loader2 className="animate-spin" size={16}/> : currentStep === 1 ? "Next Step" : "Confirm Booking"}
                 <ArrowRight size={16} />
               </button>
             </footer>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// --- MICRO COMPONENTS ---
-
-function DateBox({ label, value, onChange }: any) {
-  return (
-    <div className="bg-white border border-neutral-200 p-6 rounded-[2rem] hover:border-emerald-500 transition-all">
-      <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 block">{label}</label>
-      <input 
-        type="date" 
-        value={value} 
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-transparent font-bold text-sm outline-none cursor-pointer" 
-      />
-    </div>
-  );
-}
-
-function LuxeInput({ icon, placeholder, value, onChange }: any) {
-  return (
-    <div className="relative group">
-       <div className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-emerald-500 transition-colors">
-         {icon}
-       </div>
-       <input 
-          type="text" 
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-white border border-neutral-200 rounded-2xl py-5 pl-14 pr-6 text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-       />
     </div>
   );
 }
