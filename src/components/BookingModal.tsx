@@ -19,9 +19,9 @@ export default function BookingModal({
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
 
-  // Date Safety: Ensure dates are never empty strings
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  
   const [dateIn, setDateIn] = useState(initialCheckIn || today);
   const [dateOut, setDateOut] = useState(initialCheckOut || tomorrow);
 
@@ -33,6 +33,7 @@ export default function BookingModal({
     const start = new Date(dateIn);
     const end = new Date(dateOut);
     const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    // Ensure nights is at least 1, and handle invalid date ranges
     return diff > 0 ? diff : 1;
   }, [dateIn, dateOut]);
 
@@ -42,72 +43,64 @@ export default function BookingModal({
   }, [room, nights]);
 
   const handleConfirmBooking = async () => {
-  if (!customerName || !customerEmail || !customerPhone) {
-    setSubmitError("Please fill in all details.");
-    return;
-  }
-
-  try {
-    setIsSubmitting(true);
-    setSubmitError(null);
-
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-    // ✅ ALWAYS VALID UUID
-    let finalRoomId = "1cff9f52-513d-4a30-89dc-b2d6fa357842";
-
-    if (room?.id && uuidRegex.test(room.id)) {
-      finalRoomId = room.id;
+    if (!customerName || !customerEmail || !customerPhone) {
+      setSubmitError("Please fill in all details.");
+      return;
     }
 
-    console.log("FINAL ROOM ID:", finalRoomId);
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
 
-    const { error: dbError } = await supabase
-      .from('bookings')
-      .insert([
-        {
-          room_id: finalRoomId,
-          hotel_id: "GREEN_GARDEN_RESORT", // TEXT ✔
-          guest_name: customerName,
-          guest_email: customerEmail,
-          guest_phone: customerPhone,
-          check_in: dateIn,
-          check_out: dateOut,
-          num_guests: Number(guests),
-          total_price: Number(grandTotal),
-          status: 'pending'
-        }
-      ]);
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      let finalRoomId = "1cff9f52-513d-4a30-89dc-b2d6fa357842";
 
-    if (dbError) throw dbError;
+      if (room?.id && uuidRegex.test(room.id)) {
+        finalRoomId = room.id;
+      }
 
-    await emailjs.send(
-      EMAILJS_SERVICE_ID,
-      EMAILJS_TEMPLATE_ID,
-      {
-        customer_name: customerName,
-        customer_email: customerEmail,
-        room_type: room?.room_type || "Luxury Suite",
-        total_price: `₹${grandTotal}`,
-        check_in: dateIn,
-        check_out: dateOut
-      },
-      EMAILJS_PUBLIC_KEY
-    );
-
-    setSubmitSuccess(true);
-
-  } catch (err: any) {
-    console.error(err);
-    setSubmitError(err.message || "Something went wrong.");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      const { error: dbError } = await supabase
+        .from('bookings')
+        .insert([
+          {
+            room_id: finalRoomId,
+            hotel_id: "GREEN_GARDEN_RESORT",
+            guest_name: customerName,
+            guest_email: customerEmail,
+            guest_phone: customerPhone,
+            check_in: dateIn,
+            check_out: dateOut,
+            num_guests: Number(guests),
+            total_price: Number(grandTotal),
+            status: 'pending'
+          }
+        ]);
 
       if (dbError) throw dbError;
 
-      
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          customer_name: customerName,
+          customer_email: customerEmail,
+          room_type: room?.room_type || "Luxury Suite",
+          total_price: `₹${grandTotal}`,
+          check_in: dateIn,
+          check_out: dateOut
+        },
+        EMAILJS_PUBLIC_KEY
+      );
+
+      setSubmitSuccess(true);
+    } catch (err: any) {
+      console.error(err);
+      setSubmitError(err.message || "Something went wrong.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
