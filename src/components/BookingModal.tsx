@@ -57,10 +57,9 @@ export default function BookingModal({
 
     // Remove hotel_id completely
     const { error: dbError } = await supabase
-      .from('bookings')
+      .from('booking') // Updated from 'bookings' to 'booking'
       .insert([
         {
-          room_id: "1cff9f52-513d-4a30-89dc-b2d6fa357842", 
           guest_name: customerName,
           guest_email: customerEmail,
           guest_phone: customerPhone,
@@ -68,8 +67,11 @@ export default function BookingModal({
           check_out: dateOut,
           num_guests: Number(guests),
           total_price: Number(grandTotal),
-          status: 'pending'
-          // NO hotel_id here. At all.
+          status: 'pending',
+          // Send the text string safely now
+          hotel_id: "GREEN_GARDEN_RESORT", 
+          // Ensure this is a valid UUID from your 'rooms' table
+          room_id: room?.id || "1cff9f52-513d-4a30-89dc-b2d6fa357842" 
         }
       ]);
 
