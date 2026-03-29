@@ -54,15 +54,14 @@ export default function BookingForm({ room }: BookingFormProps) {
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
-          room_name: room.name,
-          base_price: room.basePrice,
-          breakfast_included: addBreakfast ? "Yes" : "No",
-          total_price: `₹${totalPrice}`,
-          check_in: checkIn,
-          check_out: checkOut,
-          customer_name: name,
-          customer_mobile: mobileNo,
-          customer_email: email,
+          customer_name: formData.name,
+          customer_email: formData.email,
+          customer_mobile: formData.mobileNo,
+          room_type: formData.roomName,          // e.g. "Deluxe Garden Suite"
+          add_breakfast: formData.addBreakfast ? "Yes" : "No",
+          total_price: totalPrice.toString(),    // e.g. "1700"
+          check_in: formData.checkIn,
+          check_out: formData.checkOut
         },
         EMAILJS_PUBLIC_KEY
       );
