@@ -64,13 +64,13 @@ export default function BookingModal({
           guest_phone: customerPhone,
           check_in: dateIn,
           check_out: dateOut,
-          num_guests: Number(guests) || 1,
-          total_price: Number(grandTotal) || 0,
+          num_guests: Number(guests),
+          total_price: Number(grandTotal),
           status: 'pending',
-          room_id: finalRoomId,
-          hotel_id: "GREEN_GARDEN_RESORT" // <--- QUOTES ARE KEY
+          room_id: "1cff9f52-513d-4a30-89dc-b2d6fa357842", 
+          hotel_id: "GREEN_GARDEN_RESORT" // <--- MUST have these " " quotes
         }
-      ]);
+  ]);
 
     if (dbError) {
       console.error("Database Error Detail:", dbError);
