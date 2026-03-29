@@ -1,101 +1,170 @@
-import { Calendar, Users, ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { useState } from 'react';
+import emailjs from '@emailjs/browser';
 
-interface BookingFormProps {
-  onSearch?: (filters: { checkIn: string; checkOut: string; guests: number }) => void;
-}
+const EMAILJS_SERVICE_ID = 'service_12y6xre';
+const EMAILJS_TEMPLATE_ID = 'template_mz16rsu';
+const EMAILJS_PUBLIC_KEY = 'bsmrGxOAEmpS7_WtU';
 
-export default function BookingForm({ onSearch }: BookingFormProps) {
-  const today = new Date().toISOString().split('T')[0];
+export default function DirectBookingForm() {
+  // form state
+  const [hotel, setHotel] = useState('Blossom');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
-  const [guests, setGuests] = useState(1);
+  const [name, setName] = useState('');
+  const [mobileNo, setMobileNo] = useState('');
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
 
-  const incrementGuests = () => setGuests((g) => Math.min(g + 1, 10));
-  const decrementGuests = () => setGuests((g) => Math.max(g - 1, 1));
-
-  const handleSubmit = (e: React.FormEvent) => {
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (onSearch) onSearch({ checkIn, checkOut, guests });
+    if (!checkIn || !checkOut || !name || !mobileNo || !email) {
+      alert('Please fill all required fields.');
+      return;
+    }
+
+    setSending(true);
+
+    try {
+      const templateParams = {
+        to_email: 'hotelgreengarden0112@gmail.com',
+        hotel,
+        check_in: checkIn,
+        check_out: checkOut,
+        name,
+        mobile_no: mobileNo,
+        from_email: email,
+      };
+
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        templateParams,
+        EMAILJS_PUBLIC_KEY
+      );
+
+      alert('Booking request sent successfully!');
+      // Reset form
+      setHotel('Blossom');
+      setCheckIn('');
+      setCheckOut('');
+      setName('');
+      setMobileNo('');
+      setEmail('');
+    } catch (error) {
+      console.error('EmailJS error:', error);
+      alert('Failed to send booking request. Please try again later.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-5xl mx-auto flex flex-wrap gap-6 items-center justify-center py-8 px-6
-        bg-black bg-opacity-30 backdrop-blur-md rounded-3xl shadow-lg"
-      style={{ minWidth: '320px' }}
+    <section
+      className="bg-black bg-opacity-50 backdrop-blur-md px-4 py-3"
+      style={{ fontFamily: 'inherit' }} // inherit font for consistency (optional)
     >
-      {/* Check In */}
-      <div className="flex flex-col w-40">
-        <label className="flex items-center gap-2 text-white font-semibold tracking-wide text-xs uppercase mb-2">
-          <Calendar size={16} /> CHECK-IN
-        </label>
-        <input
-          type="date"
-          min={today}
-          value={checkIn}
-          onChange={(e) => setCheckIn(e.target.value)}
-          placeholder="-- --"
-          className="bg-transparent border border-white/50 rounded-xl px-4 py-3 text-white placeholder-white/70 text-lg font-semibold
-            focus:outline-none focus:ring-2 focus:ring-emerald-400 transition"
-          required
-        />
-      </div>
-
-      {/* Check Out */}
-      <div className="flex flex-col w-40">
-        <label className="flex items-center gap-2 text-white font-semibold tracking-wide text-xs uppercase mb-2">
-          <Calendar size={16} /> CHECK-OUT
-        </label>
-        <input
-          type="date"
-          min={checkIn || today}
-          value={checkOut}
-          onChange={(e) => setCheckOut(e.target.value)}
-          placeholder="-- --"
-          className="bg-transparent border border-white/50 rounded-xl px-4 py-3 text-white placeholder-white/70 text-lg font-semibold
-            focus:outline-none focus:ring-2 focus:ring-emerald-400 transition"
-          required
-        />
-      </div>
-
-      {/* Guests */}
-      <div className="flex flex-col w-40">
-        <label className="flex items-center gap-2 text-white font-semibold tracking-wide text-xs uppercase mb-2">
-          <Users size={16} /> GUESTS
-        </label>
-        <div className="relative bg-transparent border border-white/50 rounded-xl flex items-center justify-center text-white font-semibold text-lg px-5 py-3">
-          <button
-            type="button"
-            onClick={decrementGuests}
-            disabled={guests === 1}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-white disabled:opacity-50"
-            aria-label="Decrease Guests"
-          >
-            <ChevronDown size={20} />
-          </button>
-          <span className="mx-auto select-none">{guests} Guest{guests > 1 ? 's' : ''}</span>
-          <button
-            type="button"
-            onClick={incrementGuests}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-white"
-            aria-label="Increase Guests"
-          >
-            <ChevronUp size={20} />
-          </button>
-        </div>
-      </div>
-
-      {/* Search Button */}
-      <button
-        type="submit"
-        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase text-lg 
-          rounded-xl py-3 px-10 flex items-center gap-3 shadow-lg transition"
+      <form
+        onSubmit={handleSubmit}
+        className="max-w-full flex flex-wrap items-center gap-3 justify-center text-white text-sm font-medium"
       >
-        <Search size={22} />
-        SEARCH ROOMS
-      </button>
-    </form>
+        {/* Hotel Select */}
+        <label className="flex flex-col">
+          <span className="sr-only">Hotel</span>
+          <select
+            aria-label="Select Hotel"
+            value={hotel}
+            onChange={(e) => setHotel(e.target.value)}
+            className="h-10 w-36 rounded-sm text-black px-2 border border-gray-300"
+          >
+            <option>Blossom</option>
+            <option>Another Hotel</option>
+          </select>
+        </label>
+
+        {/* Check In */}
+        <label className="flex flex-col">
+          <span className="sr-only">Check In</span>
+          <input
+            type="date"
+            placeholder="dd-mm-yyyy"
+            value={checkIn}
+            onChange={(e) => setCheckIn(e.target.value)}
+            className="h-10 w-36 rounded-sm px-2 text-black border border-gray-300"
+            required
+          />
+        </label>
+
+        {/* Check Out */}
+        <label className="flex flex-col">
+          <span className="sr-only">Check Out</span>
+          <input
+            type="date"
+            placeholder="dd-mm-yyyy"
+            value={checkOut}
+            onChange={(e) => setCheckOut(e.target.value)}
+            className="h-10 w-36 rounded-sm px-2 text-black border border-gray-300"
+            required
+          />
+        </label>
+
+        {/* Name */}
+        <label className="flex flex-col">
+          <span className="sr-only">Name</span>
+          <input
+            type="text"
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-10 w-44 rounded-sm px-2 text-black border border-gray-300"
+            required
+          />
+        </label>
+
+        {/* Mobile No */}
+        <label className="flex flex-col">
+          <span className="sr-only">Mobile No</span>
+          <input
+            type="tel"
+            placeholder="Mobile No."
+            value={mobileNo}
+            onChange={(e) => setMobileNo(e.target.value)}
+            className="h-10 w-36 rounded-sm px-2 text-black border border-gray-300"
+            required
+          />
+        </label>
+
+        {/* E-mail */}
+        <label className="flex flex-col">
+          <span className="sr-only">E-mail</span>
+          <input
+            type="email"
+            placeholder="E-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-10 w-44 rounded-sm px-2 text-black border border-gray-300"
+            required
+          />
+        </label>
+
+        {/* Book Now Button */}
+        <button
+          type="submit"
+          disabled={sending}
+          className={`h-10 px-5 rounded-sm font-semibold ${
+            sending
+              ? 'bg-gray-600 cursor-not-allowed'
+              : 'bg-white text-black hover:bg-gray-100'
+          } transition`}
+        >
+          {sending ? 'Sending...' : 'Book Now'}
+        </button>
+      </form>
+
+      {/* Contact info below, adapt styling as you need */}
+      <div className="mt-4 text-center text-sm text-gray-300">
+        Phone No. +91 80191600498 | Reservation Number | Email: reservations@blossomhotels.in
+      </div>
+    </section>
   );
 }
