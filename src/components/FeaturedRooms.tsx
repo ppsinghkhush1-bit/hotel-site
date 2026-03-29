@@ -1,144 +1,111 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import RoomDetailsModal from './RoomDetailsModal';
-import BookingModal from './BookingModal';
+import { useState } from 'react';
 
-export default function FeaturedRooms() {
-  const [rooms, setRooms] = useState<any[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
-  const [bookingRoom, setBookingRoom] = useState<any | null>(null);
+export default function DirectBookingForm() {
+  // Form state
+  const [hotel, setHotel] = useState('Blossom');
+  const [checkIn, setCheckIn] = useState('');
+  const [checkOut, setCheckOut] = useState('');
+  const [name, setName] = useState('');
+  const [mobileNo, setMobileNo] = useState('');
+  const [email, setEmail] = useState('');
 
-  useEffect(() => {
-    fetchRooms();
-  }, []);
-
-  const fetchRooms = async () => {
-    const { data, error } = await supabase.from('rooms').select('*');
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    // ✅ Only 3 rooms + remove duplicates
-    const filtered = Array.from(
-      new Map(
-        data
-          .filter((room) =>
-            ['Standard Room', 'Deluxe Room', 'Luxury Suite'].includes(room.room_type)
-          )
-          .map((room) => [room.room_type, room])
-      ).values()
-    );
-
-    setRooms(filtered);
-  };
-
-  // ✅ Best image logic
-  const getBestImage = (room: any) => {
-    if (room.gallery_images && room.gallery_images.length > 0) {
-      return room.gallery_images[0];
-    }
-    return room.image_url || '/hotel-room.jpg';
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Implement booking submit logic here
+    alert(`Booking Submitted for ${name} at ${hotel}`);
   };
 
   return (
-    <section className="py-20 bg-gray-50">
-      <h2 className="text-4xl font-bold text-center mb-12">Our Rooms</h2>
+    <section className="bg-black text-white p-4">
+      {/* Booking Form */}
+      <form onSubmit={handleSubmit} className="flex flex-wrap gap-4 items-center justify-center max-w-full overflow-x-auto">
+        {/* Hotel Select */}
+        <label>
+          Hotel
+          <select
+            value={hotel}
+            onChange={(e) => setHotel(e.target.value)}
+            className="mx-2 p-2 rounded border border-gray-300 text-black"
+          >
+            <option value="Blossom">Blossom</option>
+            <option value="Another Hotel">Another Hotel</option>
+            {/* Add more hotels if needed */}
+          </select>
+        </label>
 
-      <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8 px-4">
+        {/* Check In */}
+        <label>
+          Check In
+          <input
+            type="date"
+            placeholder="dd-mm-yyyy"
+            value={checkIn}
+            onChange={(e) => setCheckIn(e.target.value)}
+            className="mx-2 p-2 rounded border border-gray-300 text-black"
+          />
+        </label>
 
-        {rooms.map((room) => {
-          const isAvailable = Number(room.available_rooms) > 0;
+        {/* Check Out */}
+        <label>
+          Check Out
+          <input
+            type="date"
+            placeholder="dd-mm-yyyy"
+            value={checkOut}
+            onChange={(e) => setCheckOut(e.target.value)}
+            className="mx-2 p-2 rounded border border-gray-300 text-black"
+          />
+        </label>
 
-          return (
-            <div
-              key={room.id}
-              className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col h-full"
-            >
+        {/* Name */}
+        <label>
+          Name
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mx-2 p-2 rounded border border-gray-300 text-black"
+            required
+          />
+        </label>
 
-              {/* IMAGE */}
-              <div className="relative">
-                <img
-                  src={getBestImage(room)}
-                  onError={(e) => (e.currentTarget.src = '/hotel-room.jpg')}
-                  className="w-full h-60 object-cover"
-                />
+        {/* Mobile No */}
+        <label>
+          Mobile No.
+          <input
+            type="tel"
+            value={mobileNo}
+            onChange={(e) => setMobileNo(e.target.value)}
+            className="mx-2 p-2 rounded border border-gray-300 text-black"
+            required
+          />
+        </label>
 
-                {!isAvailable && (
-                  <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm">
-                    Not Available
-                  </div>
-                )}
-              </div>
+        {/* E-mail */}
+        <label>
+          E-mail
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mx-2 p-2 rounded border border-gray-300 text-black"
+            required
+          />
+        </label>
 
-              {/* CONTENT */}
-              <div className="p-5 flex flex-col flex-grow">
+        {/* Book Now Button */}
+        <button
+          type="submit"
+          className="bg-white text-black font-bold py-2 px-4 rounded ml-2"
+        >
+          Book Now
+        </button>
+      </form>
 
-                <h3 className="text-xl font-bold mb-2">
-                  {room.room_type}
-                </h3>
-
-                <p className="text-gray-600 mb-3 flex-grow">
-                  {room.description}
-                </p>
-
-                <div className="text-green-600 font-bold mb-4">
-                  ₹{room.price_per_night}/night
-                </div>
-
-                {/* BUTTONS */}
-                <div className="flex gap-3 mt-auto">
-
-                  {/* VIEW MORE */}
-                  <button
-                    onClick={() => setSelectedRoom(room)}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 py-2 rounded-lg font-semibold"
-                  >
-                    View More
-                  </button>
-
-                  {/* BOOK NOW */}
-                  <button
-                    onClick={() => isAvailable && setBookingRoom(room)}
-                    disabled={!isAvailable}
-                    className={`flex-1 py-2 rounded-lg font-semibold text-white ${
-                      isAvailable
-                        ? 'bg-green-600 hover:bg-green-700'
-                        : 'bg-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    {isAvailable ? 'Book Now' : 'Sold Out'}
-                  </button>
-
-                </div>
-
-              </div>
-            </div>
-          );
-        })}
-
+      {/* Contact info below form */}
+      <div className="mt-4 text-center text-gray-300">
+        Phone No. +91 80191600498 | Reservation Number | Email: reservations@blossomhotels.in
       </div>
-
-      {/* VIEW MORE MODAL */}
-      {selectedRoom && (
-        <RoomDetailsModal
-          room={selectedRoom}
-          onClose={() => setSelectedRoom(null)}
-          onBook={() => {
-            setBookingRoom(selectedRoom);
-            setSelectedRoom(null);
-          }}
-        />
-      )}
-
-      {/* BOOKING MODAL */}
-      {bookingRoom && (
-        <BookingModal
-          room={bookingRoom}
-          onClose={() => setBookingRoom(null)}
-        />
-      )}
     </section>
   );
 }
