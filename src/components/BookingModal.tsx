@@ -39,7 +39,6 @@ export default function BookingModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Ensure dates are in YYYY-MM-DD format for the input
     if (checkIn) setBookingCheckIn(checkIn);
     if (checkOut) setBookingCheckOut(checkOut);
   }, [checkIn, checkOut]);
@@ -62,32 +61,19 @@ export default function BookingModal({
   const isFormValid = customerName.length > 2 && customerEmail.includes('@') && customerPhone.length >= 10;
 
   const handleConfirmBooking = async (e: React.MouseEvent) => {
-    // --- FIX 1: KILL CALENDAR POPUP ---
     e.preventDefault();
-    e.stopPropagation();
-
     if (!isFormValid) return;
 
     try {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // --- FIX 2: DATA INTEGRITY (UUID & FOREIGN KEYS) ---
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      
-      // We must use IDs that EXIST in your Supabase tables
-      // Based on your previous screenshots, this is a valid room UUID
-      const validRoomId = uuidRegex.test(room.id) ? room.id : '1cff9f52-513d-4a30-89dc-b2d6fa357842';
-      
-      // IMPORTANT: Your error says 'bookings_hotel_id_fkey' failed.
-      // This means the hotel_id below MUST exist in your 'hotels' table.
-      // If you don't have a 'hotels' table, you might need to remove this field or check your schema.
-      const validHotelId = room.hotel_id || '1cff9f52-513d-4a30-89dc-b2d6fa357842';
-
-      // --- FIX 3: SUPABASE INSERT ---
+      // --- DATABASE INSERT ---
+      // We use the room.id from your 'rooms' table. 
+      // If hotel_id is required by your schema, we use the room's hotel_id or a fallback.
       const { error: dbError } = await supabase.from('bookings').insert([{
-        room_id: validRoomId,
-        hotel_id: validHotelId,
+        room_id: room.id,
+        hotel_id: room.hotel_id || '1cff9f52-513d-4a30-89dc-b2d6fa357842', 
         guest_name: customerName,
         guest_email: customerEmail,
         guest_phone: customerPhone,
@@ -98,25 +84,24 @@ export default function BookingModal({
         status: 'pending'
       }]);
 
-      if (dbError) {
-          // Special handling for foreign key errors
-          if (dbError.code === '23503') {
-              throw new Error("Foreign Key Error: The Hotel ID or Room ID does not exist in the database. Please check your Supabase tables.");
-          }
-          throw dbError;
-      }
+      if (dbError) throw dbError;
 
-      // --- FIX 4: EMAILJS ---
+      // --- EMAIL NOTIFICATION ---
+      // This sends the data to EmailJS. 
+      // MAKE SURE your EmailJS template is set to send to: hotelgreengarden0112@gmail.com
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
-          to_name: customerName,
-          to_email: customerEmail,
-          room_name: room.room_type || room.name,
+          to_name: "Hotel Manager",
+          customer_name: customerName,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
+          room_type: room.room_type || "Standard Room",
           check_in: bookingCheckIn,
           check_out: bookingCheckOut,
-          total_price: `₹${grandTotal}`,
+          total_price: `INR ${grandTotal}`,
+          hotel_contact_email: 'hotelgreengarden0112@gmail.com' 
         },
         EMAILJS_PUBLIC_KEY
       );
@@ -124,7 +109,7 @@ export default function BookingModal({
       setSubmitSuccess(true);
     } catch (err: any) {
       console.error(err);
-      setSubmitError(err.message || "Something went wrong.");
+      setSubmitError(err.message || "Database connection error.");
     } finally {
       setIsSubmitting(false);
     }
@@ -139,12 +124,12 @@ export default function BookingModal({
         {/* Sidebar */}
         <div className="hidden md:flex w-1/3 bg-[#0f172a] p-10 flex-col justify-between text-white">
           <div>
-            <h2 className="text-3xl font-bold">{room.room_type || room.name || "Room"}</h2>
-            <p className="mt-4 text-slate-400 text-sm">{room.description || "Luxury stay"}</p>
+            <h2 className="text-3xl font-bold">{room.room_type || "Room"}</h2>
+            <p className="mt-4 text-slate-400 text-sm">{room.description || "Comfortable stay"}</p>
           </div>
           <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-2">
             <Info size={16} className="text-emerald-400" />
-            <p className="text-[10px]">Instant confirmation sent to your email.</p>
+            <p className="text-[10px]">Booking request will be sent to the hotel instantly.</p>
           </div>
         </div>
 
@@ -153,7 +138,8 @@ export default function BookingModal({
           {submitSuccess ? (
             <div className="text-center py-12">
               <CheckCircle2 size={60} className="text-emerald-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold">Booking Sent!</h2>
+              <h2 className="text-2xl font-bold">Booking Request Sent!</h2>
+              <p className="text-slate-500 mt-2">We will contact you shortly.</p>
               <button onClick={onClose} className="mt-8 px-10 py-3 bg-slate-900 text-white rounded-xl">Done</button>
             </div>
           ) : (
@@ -166,15 +152,15 @@ export default function BookingModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Full Name" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Enter your name" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email address" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Phone</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone number" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Check-in</label>
@@ -193,7 +179,6 @@ export default function BookingModal({
                     <p className="text-4xl font-black text-emerald-600">₹{grandTotal}</p>
                   </div>
                   
-                  {/* BUTTON: Note the type="button" and onClick logic */}
                   <button
                     type="button" 
                     onClick={handleConfirmBooking}
