@@ -53,7 +53,18 @@ export default function BookingModal({
 
       // room_id MUST be a valid UUID. If 'room.id' is missing/invalid, we use your table's fallback.
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      const finalRoomId = uuidRegex.test(room?.id) ? room.id : '1cff9f52-513d-4a30-89dc-b2d6fa357842';
+      const finalRoomId = uuidRegex.test(room?.id) 
+        ? room.id 
+        : '1cff9f52-513d-4a30-89dc-b2d6fa357842';
+      
+      console.log("ROOM ID:", room?.id);
+      console.log("FINAL ROOM ID:", finalRoomId);
+
+      if (!uuidRegex.test(finalRoomId)) {
+        setSubmitError("Invalid room ID.");
+        setIsSubmitting(false);
+        return;
+      }
 
       const { error: dbError } = await supabase.from('bookings').insert([{
         room_id: finalRoomId,
