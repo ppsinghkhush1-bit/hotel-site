@@ -68,7 +68,7 @@ export default function BookingModal({
 
       const { error: dbError } = await supabase.from('bookings').insert([{
         room_id: finalRoomId,
-        hotel_id: "GREEN_GARDEN_RESORT", // ✅ ADD THIS BACK
+        hotel_id: "GREEN_GARDEN_RESORT", // now works 100%
         guest_name: customerName,
         guest_email: customerEmail,
         guest_phone: customerPhone,
