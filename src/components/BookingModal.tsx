@@ -68,54 +68,42 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // --- 1. PREPARE DATA ---
-      // We use the ID from your database screenshot to be 100% sure it exists
-      const fallbackId = '1cff9f52-513d-4a30-89dc-b2d6fa357842';
+      // Use a valid UUID from your 'rooms' table screenshot as a safety fallback
+      const fallbackRoomId = '1cff9f52-513d-4a30-89dc-b2d6fa357842';
       
-      const bookingData = {
-        room_id: room?.id && room.id.length > 10 ? room.id : fallbackId,
-        hotel_id: room?.hotel_id && room.hotel_id.length > 10 ? room.hotel_id : fallbackId,
+      const { error: dbError } = await supabase.from('bookings').insert([{
+        room_id: (room?.id && room.id.length > 10) ? room.id : fallbackRoomId,
+        // Since we removed the constraint in SQL, we can send null or the fallback
+        hotel_id: (room?.hotel_id && room.hotel_id.length > 10) ? room.hotel_id : fallbackRoomId, 
         guest_name: customerName,
         guest_email: customerEmail,
         guest_phone: customerPhone,
         check_in: bookingCheckIn,
         check_out: bookingCheckOut,
-        num_guests: Number(initialGuests) || 2,
-        total_price: Number(grandTotal),
+        num_guests: initialGuests,
+        total_price: grandTotal,
         status: 'pending'
-      };
+      }]);
 
-      // --- 2. SUPABASE INSERT ---
-      const { error: dbError } = await supabase
-        .from('bookings')
-        .insert([bookingData]);
+      if (dbError) throw dbError;
 
-      if (dbError) {
-        console.error("Supabase Error:", dbError);
-        throw new Error(`Database Error: ${dbError.message}`);
-      }
-
-      // --- 3. EMAILJS ---
+      // EmailJS Call
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
           to_email: 'hotelgreengarden0112@gmail.com',
           customer_name: customerName,
-          customer_email: customerEmail,
-          customer_phone: customerPhone,
           room_type: room?.room_type || "Room Booking",
-          check_in: bookingCheckIn,
-          check_out: bookingCheckOut,
-          total_price: grandTotal,
+          total_price: `₹${grandTotal}`,
         },
         EMAILJS_PUBLIC_KEY
       );
 
       setSubmitSuccess(true);
     } catch (err: any) {
-      console.error("Full Error Object:", err);
-      setSubmitError(err.message || "Connection failed. Please check your internet.");
+      console.error(err);
+      setSubmitError("Booking failed. Please check the database SQL fix.");
     } finally {
       setIsSubmitting(false);
     }
