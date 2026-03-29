@@ -72,6 +72,7 @@ export default function BookingModal({
             num_guests: Number(guests),
             total_price: Number(grandTotal),
             status: 'pending',
+            hotel_id: "GREEN_GARDEN_RESORT"
           }
         ]);
 
