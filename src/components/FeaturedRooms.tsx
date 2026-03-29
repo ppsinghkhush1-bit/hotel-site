@@ -14,19 +14,20 @@ export default function DirectBookingForm() {
   };
 
   return (
-    <section className="bg-black text-white p-4">
+    <section className="p-4 bg-transparent">
       {/* Booking Form */}
       <form
         onSubmit={handleSubmit}
-        className="flex flex-wrap gap-4 items-center justify-center max-w-full overflow-x-auto"
+        className="flex flex-wrap gap-4 items-center justify-center max-w-full overflow-x-auto
+          bg-white/10 backdrop-blur-md rounded-3xl p-6 shadow-lg"
       >
         {/* Hotel Select */}
-        <label>
+        <label className="flex flex-col text-white font-semibold text-sm">
           Hotel
           <select
             value={hotel}
             onChange={(e) => setHotel(e.target.value)}
-            className="mx-2 p-2 rounded border border-gray-300 text-black"
+            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white text-black shadow-sm"
           >
             <option value="Blossom">Blossom</option>
             <option value="Another Hotel">Another Hotel</option>
@@ -34,61 +35,61 @@ export default function DirectBookingForm() {
         </label>
 
         {/* Check In */}
-        <label>
+        <label className="flex flex-col text-white font-semibold text-sm">
           Check In
           <input
             type="date"
-            placeholder="dd-mm-yyyy"
+            placeholder="-- --"
             value={checkIn}
             onChange={(e) => setCheckIn(e.target.value)}
-            className="mx-2 p-2 rounded border border-gray-300 text-black"
+            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white/70 text-black placeholder-black/60 shadow-sm"
           />
         </label>
 
         {/* Check Out */}
-        <label>
+        <label className="flex flex-col text-white font-semibold text-sm">
           Check Out
           <input
             type="date"
-            placeholder="dd-mm-yyyy"
+            placeholder="-- --"
             value={checkOut}
             onChange={(e) => setCheckOut(e.target.value)}
-            className="mx-2 p-2 rounded border border-gray-300 text-black"
+            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white/70 text-black placeholder-black/60 shadow-sm"
           />
         </label>
 
         {/* Name */}
-        <label>
-          Name
+        <label className="flex flex-col font-semibold text-sm">
+          <span className="text-white">Name</span>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mx-2 p-2 rounded border border-gray-300 text-black"
+            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white/70 text-black placeholder-black/60 shadow-sm"
             required
           />
         </label>
 
         {/* Mobile No */}
-        <label>
+        <label className="flex flex-col text-white font-semibold text-sm">
           Mobile No.
           <input
             type="tel"
             value={mobileNo}
             onChange={(e) => setMobileNo(e.target.value)}
-            className="mx-2 p-2 rounded border border-gray-300 text-black"
+            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white/70 text-black placeholder-black/60 shadow-sm"
             required
           />
         </label>
 
         {/* E-mail */}
-        <label>
+        <label className="flex flex-col text-white font-semibold text-sm">
           E-mail
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mx-2 p-2 rounded border border-gray-300 text-black"
+            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white/70 text-black placeholder-black/60 shadow-sm"
             required
           />
         </label>
@@ -96,7 +97,7 @@ export default function DirectBookingForm() {
         {/* Book Now Button */}
         <button
           type="submit"
-          className="bg-white text-black font-bold py-2 px-4 rounded ml-2"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl ml-2 shadow-md transition"
         >
           Book Now
         </button>
@@ -109,14 +110,17 @@ export default function DirectBookingForm() {
 
       {/* Benefits of Direct Booking Banner */}
       <div className="mt-8 max-w-full overflow-x-auto">
-        <div className="relative bg-black bg-opacity-90 rounded-lg shadow-lg flex items-center justify-between px-6 py-4 max-w-full whitespace-nowrap text-white font-bold text-xl"
+        <div
+          className="relative bg-black bg-opacity-40 rounded-lg shadow-lg flex items-center justify-between px-6 py-4 max-w-full whitespace-nowrap text-white font-bold text-xl"
           style={{
-            clipPath: 'polygon(0 0, calc(100% - 30px) 0, 100% 50%, calc(100% - 30px) 100%, 0 100%)'
+            clipPath:
+              'polygon(0 0, calc(100% - 30px) 0, 100% 50%, calc(100% - 30px) 100%, 0 100%)',
           }}
         >
           {/* Text Section */}
           <div>
-            BENEFITS OF DIRECT <span className="underline">BOOKING</span><br />
+            BENEFITS OF DIRECT <span className="underline">BOOKING</span>
+            <br />
             <span className="text-sm font-normal normal-case mt-1 block">
               *Subject To Availability
             </span>
