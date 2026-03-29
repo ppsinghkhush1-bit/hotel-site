@@ -68,12 +68,15 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // --- DATABASE INSERT ---
-      // We use the room.id from your 'rooms' table. 
-      // If hotel_id is required by your schema, we use the room's hotel_id or a fallback.
+      // --- UUID FIX ---
+      // 1. Ensure room.id is a valid UUID. 
+      // 2. Ensure hotel_id is a valid UUID string, NOT a number.
+      // Replace 'PASTE_YOUR_ACTUAL_HOTEL_UUID_HERE' with the ID from your Supabase 'hotels' table.
+      const hotelUuid = "1cff9f52-513d-4a30-89dc-b2d6fa357842"; 
+
       const { error: dbError } = await supabase.from('bookings').insert([{
-        room_id: room.id,
-        hotel_id: room.hotel_id || '1cff9f52-513d-4a30-89dc-b2d6fa357842', 
+        room_id: room.id, // This must be the UUID from the 'rooms' table
+        hotel_id: hotelUuid, 
         guest_name: customerName,
         guest_email: customerEmail,
         guest_phone: customerPhone,
@@ -84,11 +87,15 @@ export default function BookingModal({
         status: 'pending'
       }]);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        // If it still fails, it means room.id isn't a UUID yet
+        if (dbError.code === '22P02') {
+          throw new Error("ID Format Error: One of the IDs is not a valid UUID string.");
+        }
+        throw dbError;
+      }
 
-      // --- EMAIL NOTIFICATION ---
-      // This sends the data to EmailJS. 
-      // MAKE SURE your EmailJS template is set to send to: hotelgreengarden0112@gmail.com
+      // --- EMAILJS ---
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
@@ -101,7 +108,6 @@ export default function BookingModal({
           check_in: bookingCheckIn,
           check_out: bookingCheckOut,
           total_price: `INR ${grandTotal}`,
-          hotel_contact_email: 'hotelgreengarden0112@gmail.com' 
         },
         EMAILJS_PUBLIC_KEY
       );
@@ -109,7 +115,7 @@ export default function BookingModal({
       setSubmitSuccess(true);
     } catch (err: any) {
       console.error(err);
-      setSubmitError(err.message || "Database connection error.");
+      setSubmitError(err.message || "Something went wrong.");
     } finally {
       setIsSubmitting(false);
     }
