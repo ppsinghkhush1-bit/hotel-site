@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import emailjs from "@emailjs/browser";
 
 const SERVICE_ID = "service_12y6xre";
@@ -14,44 +14,34 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
   const today = new Date().toISOString().split("T")[0];
   const BREAKFAST_PRICE = 200;
 
-  const [form, setForm] = useState({
-    checkIn: "",
-    checkOut: "",
-    name: "",
-    mobileNo: "",
-    email: "",
-    addBreakfast: false,
-  });
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [name, setName] = useState("");
+  const [mobileNo, setMobileNo] = useState("");
+  const [email, setEmail] = useState("");
+  const [addBreakfast, setAddBreakfast] = useState(false);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
 
+  // Calculate nights (minimum 1)
   const nights = useMemo(() => {
-    if (!form.checkIn || !form.checkOut) return 1;
-    const start = new Date(form.checkIn);
-    const end = new Date(form.checkOut);
-    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 1;
-  }, [form.checkIn, form.checkOut]);
+    if (!checkIn || !checkOut) return 1;
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const diffMs = end.getTime() - start.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 1;
+  }, [checkIn, checkOut]);
 
-  const totalPrice = (basePrice + (form.addBreakfast ? BREAKFAST_PRICE : 0)) * nights;
+  const totalPrice = useMemo(() => {
+    return (basePrice + (addBreakfast ? BREAKFAST_PRICE : 0)) * nights;
+  }, [basePrice, addBreakfast, nights]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, type, checked, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // Prevent page reload!
-
-    // Simple validation
-    for (const key in form) {
-      if (key !== "addBreakfast" && !form[key as keyof typeof form]) {
-        setMessage(`Please enter your ${key}`);
-        return;
-      }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checkIn || !checkOut || !name || !mobileNo || !email) {
+      setMessage("Please fill all fields.");
+      return;
     }
 
     setSending(true);
@@ -62,139 +52,161 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
         SERVICE_ID,
         TEMPLATE_ID,
         {
+          // Variables matching your EmailJS template placeholders
+          customer_name: name,
+          customer_email: email,
+          customer_mobile: mobileNo,
           room_type: roomName,
-          base_price: basePrice,
-          add_breakfast: form.addBreakfast ? "Yes" : "No",
-          total_price: totalPrice.toString(), // Send number/string only, no ₹ prefix
-          check_in: form.checkIn,
-          check_out: form.checkOut,
-          customer_name: form.name,
-          customer_mobile: form.mobileNo,
-          customer_email: form.email,
+          check_in: checkIn,
+          check_out: checkOut,
+          add_breakfast: addBreakfast ? "Yes" : "No",
+          total_price: totalPrice.toString(), // send number only, no ₹ here
         },
         PUBLIC_KEY
       );
-
       setMessage("Booking request sent successfully!");
-      setForm({
-        checkIn: "",
-        checkOut: "",
-        name: "",
-        mobileNo: "",
-        email: "",
-        addBreakfast: false,
-      });
+      setCheckIn("");
+      setCheckOut("");
+      setName("");
+      setMobileNo("");
+      setEmail("");
+      setAddBreakfast(false);
     } catch (error) {
-      console.error(error);
-      setMessage("Failed to send booking request. Please try again later.");
+      console.error("EmailJS error:", error);
+      setMessage("Failed to send booking request. Please try again.");
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <section className="max-w-full py-6 px-6 font-sans bg-transparent">
-      <form onSubmit={handleSubmit} className="flex flex-nowrap items-center gap-4 overflow-x-auto max-w-full">
-        <div className="min-w-[160px] font-semibold truncate text-black">{roomName}</div>
+    <section className="max-w-full px-6 py-6 bg-transparent font-sans">
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-nowrap gap-3 max-w-full overflow-x-auto items-center"
+      >
+        {/* Room Name */}
+        <div className="min-w-[160px] font-semibold text-black truncate whitespace-nowrap">
+          {roomName}
+        </div>
 
+        {/* Check In */}
         <div className="flex flex-col min-w-[140px]">
-          <label className="text-xs font-bold uppercase mb-1 text-black" htmlFor="checkIn">Check In</label>
+          <label htmlFor="checkIn" className="text-xs font-bold uppercase mb-1 text-black">
+            Check In
+          </label>
           <input
+            type="date"
             id="checkIn"
-            type="date"
-            name="checkIn"
-            value={form.checkIn}
+            value={checkIn}
             min={today}
-            onChange={handleChange}
-            required
+            onChange={(e) => setCheckIn(e.target.value)}
             className="border border-gray-400 rounded-md p-2 text-black"
+            required
           />
         </div>
 
+        {/* Check Out */}
         <div className="flex flex-col min-w-[140px]">
-          <label className="text-xs font-bold uppercase mb-1 text-black" htmlFor="checkOut">Check Out</label>
+          <label htmlFor="checkOut" className="text-xs font-bold uppercase mb-1 text-black">
+            Check Out
+          </label>
           <input
-            id="checkOut"
             type="date"
-            name="checkOut"
-            value={form.checkOut}
-            min={form.checkIn || today}
-            onChange={handleChange}
-            required
+            id="checkOut"
+            value={checkOut}
+            min={checkIn || today}
+            onChange={(e) => setCheckOut(e.target.value)}
             className="border border-gray-400 rounded-md p-2 text-black"
+            required
           />
         </div>
 
+        {/* Name */}
         <div className="flex flex-col min-w-[160px]">
-          <label className="text-xs font-bold uppercase mb-1 text-black" htmlFor="name">Name</label>
+          <label htmlFor="name" className="text-xs font-bold uppercase mb-1 text-black">
+            Name
+          </label>
           <input
-            id="name"
             type="text"
-            name="name"
+            id="name"
             placeholder="Full name"
-            value={form.name}
-            onChange={handleChange}
-            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className="border border-gray-400 rounded-md p-2 text-black"
+            required
           />
         </div>
 
+        {/* Mobile No */}
         <div className="flex flex-col min-w-[140px]">
-          <label className="text-xs font-bold uppercase mb-1 text-black" htmlFor="mobileNo">Mobile No.</label>
+          <label htmlFor="mobileNo" className="text-xs font-bold uppercase mb-1 text-black">
+            Mobile No.
+          </label>
           <input
-            id="mobileNo"
             type="tel"
-            name="mobileNo"
-            placeholder="+91 9000000000"
-            value={form.mobileNo}
-            onChange={handleChange}
-            required
+            id="mobileNo"
+            placeholder="+91 1234567890"
+            value={mobileNo}
+            onChange={(e) => setMobileNo(e.target.value)}
             className="border border-gray-400 rounded-md p-2 text-black"
+            required
           />
         </div>
 
+        {/* Email */}
         <div className="flex flex-col min-w-[180px]">
-          <label className="text-xs font-bold uppercase mb-1 text-black" htmlFor="email">E-mail</label>
+          <label htmlFor="email" className="text-xs font-bold uppercase mb-1 text-black">
+            Email
+          </label>
           <input
-            id="email"
             type="email"
-            name="email"
+            id="email"
             placeholder="you@example.com"
-            value={form.email}
-            onChange={handleChange}
-            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="border border-gray-400 rounded-md p-2 text-black"
+            required
           />
         </div>
 
-        <label className="inline-flex items-center min-w-[140px] gap-2 text-black text-xs font-semibold whitespace-nowrap">
+        {/* Breakfast */}
+        <label className="inline-flex items-center min-w-[130px] gap-2 text-black text-xs font-semibold whitespace-nowrap">
           <input
             type="checkbox"
-            name="addBreakfast"
-            checked={form.addBreakfast}
-            onChange={handleChange}
+            checked={addBreakfast}
+            onChange={(e) => setAddBreakfast(e.target.checked)}
             className="w-4 h-4"
           />
           Add Breakfast ₹200
         </label>
 
-        <div className="min-w-[140px] font-bold text-lg flex items-center justify-center text-black whitespace-nowrap">
-          ₹{((basePrice + (form.addBreakfast ? 200 : 0)) * nights).toLocaleString("en-IN")}
+        {/* Total Price */}
+        <div className="min-w-[140px] font-bold text-lg text-black flex items-center justify-center whitespace-nowrap">
+          ₹{totalPrice.toLocaleString("en-IN")}
         </div>
 
+        {/* Submit Button */}
         <button
           type="submit"
           disabled={sending}
           className={`min-w-[140px] px-6 py-3 rounded border border-red-600 font-bold transition ${
-            sending ? "opacity-50 cursor-not-allowed bg-red-600 text-white" : "text-red-600 hover:bg-red-600 hover:text-white"
+            sending
+              ? "bg-red-600 text-white cursor-not-allowed opacity-50"
+              : "text-red-600 hover:bg-red-600 hover:text-white"
           }`}
         >
           {sending ? "Booking..." : "Book Now"}
         </button>
       </form>
 
+      {/* Display message */}
       {message && (
-        <p className={`mt-3 text-center text-sm font-semibold ${message.toLowerCase().includes("success") ? "text-green-600" : "text-red-600"}`}>
+        <p
+          className={`mt-3 text-center text-sm font-semibold ${
+            message.toLowerCase().includes("success") ? "text-green-600" : "text-red-600"
+          }`}
+        >
           {message}
         </p>
       )}
