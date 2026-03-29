@@ -73,11 +73,11 @@ export default function BookingModal({
         }
       ]);
 
-if (error) {
-  console.error('Booking error:', error);
-} else {
-  console.log('Booking success:', data);
-}
+    if (error) {
+      console.error('Booking error:', error);
+    } else {
+      console.log('Booking success:', data);
+    }
 
     if (dbError) {
       console.error("Database Error Detail:", dbError);
