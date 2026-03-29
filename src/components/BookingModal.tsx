@@ -63,12 +63,7 @@ export default function BookingModal({
         .from('bookings')
         .insert([
           {
-            // 1. MUST BE A VALID UUID (e.g., "1cff9f52-...")
-            room_id: finalRoomId, 
-            
-            // 2. THIS IS TEXT, so "GREEN_GARDEN_RESORT" is fine here
-            hotel_id: "GREEN_GARDEN_RESORT", 
-      
+            room_id: finalRoomId, // Ensure this is a valid UUID string
             guest_name: customerName,
             guest_email: customerEmail,
             guest_phone: customerPhone,
@@ -76,7 +71,8 @@ export default function BookingModal({
             check_out: dateOut,
             num_guests: Number(guests),
             total_price: Number(grandTotal),
-            status: 'pending'
+            status: 'pending',
+            hotel_id: "GREEN_GARDEN_RESORT" // This column MUST be type 'text' in Supabase
           }
         ]);
 
