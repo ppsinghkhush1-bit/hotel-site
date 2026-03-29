@@ -1,182 +1,138 @@
-import { useState } from "react";
-import emailjs from "@emailjs/browser";
-
-const EMAILJS_SERVICE_ID = "service_12y6xre";
-const EMAILJS_TEMPLATE_ID = "template_mz16rsu";
-const EMAILJS_PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
+import React, { useState } from "react";
 
 export default function DirectBookingForm() {
+  // Form state
   const [hotel, setHotel] = useState("Blossom");
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [name, setName] = useState("");
   const [mobileNo, setMobileNo] = useState("");
   const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [message, setMessage] = useState("");
 
-  // Minimum date for check-in and check-out is today
   const today = new Date().toISOString().split("T")[0];
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Basic validation
-    if (
-      !hotel ||
-      !checkIn ||
-      !checkOut ||
-      !name ||
-      !mobileNo ||
-      !email
-    ) {
-      setMessage("Please fill all fields.");
-      return;
-    }
-
-    setSending(true);
-    setMessage("");
-
-    try {
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
-        {
-          hotel,
-          check_in: checkIn,
-          check_out: checkOut,
-          name,
-          mobile_no: mobileNo,
-          email,
-        },
-        EMAILJS_PUBLIC_KEY
-      );
-      setMessage("Booking request sent successfully!");
-      // Clear form
-      setHotel("Blossom");
-      setCheckIn("");
-      setCheckOut("");
-      setName("");
-      setMobileNo("");
-      setEmail("");
-    } catch (error) {
-      console.error(error);
-      setMessage("Failed to send booking request. Please try again.");
-    } finally {
-      setSending(false);
-    }
+    // Add your submit logic here (e.g. EmailJS or API call)
+    alert(`Booking submitted for ${name} at ${hotel}`);
   };
 
   return (
-    <section className="bg-transparent px-8 py-3">
-      {/* Booking Form Bar */}
+    <section className="font-sans">
+      {/* Booking bar container */}
       <form
         onSubmit={handleSubmit}
-        className="flex flex-wrap items-center gap-4 max-w-full justify-center"
+        className="bg-transparent p-4 grid grid-cols-7 gap-x-4 items-end overflow-x-auto"
       >
-        {/* Hotel */}
+        {/* Labels above inputs */}
+        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
+          Hotel
+        </div>
+        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
+          Check In
+        </div>
+        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
+          Check Out
+        </div>
+        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
+          Name
+        </div>
+        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
+          Mobile No.
+        </div>
+        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
+          E-mail
+        </div>
+        <div></div> {/* Empty column for Book Now label alignment */}
+
+        {/* Input fields */}
         <select
           value={hotel}
           onChange={(e) => setHotel(e.target.value)}
-          className="bg-white text-black p-2 rounded w-28"
+          className="col-span-1 rounded border border-black p-2 text-black"
+          aria-label="Hotel"
           required
         >
-          <option value="Blossom">Blossom</option>
-          <option value="Another Hotel">Another Hotel</option>
+          <option>Blossom</option>
+          <option>Another Hotel</option>
         </select>
 
-        {/* Check In */}
         <input
           type="date"
-          value={checkIn}
           min={today}
+          value={checkIn}
           onChange={(e) => setCheckIn(e.target.value)}
-          placeholder="dd-mm-yyyy"
-          className="bg-white text-black p-2 rounded w-36"
+          className="col-span-1 p-2 rounded border border-black text-black"
+          aria-label="Check In"
           required
         />
 
-        {/* Check Out */}
         <input
           type="date"
-          value={checkOut}
           min={checkIn || today}
+          value={checkOut}
           onChange={(e) => setCheckOut(e.target.value)}
-          placeholder="dd-mm-yyyy"
-          className="bg-white text-black p-2 rounded w-36"
+          className="col-span-1 p-2 rounded border border-black text-black"
+          aria-label="Check Out"
           required
         />
 
-        {/* Name */}
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Name"
-          className="bg-white text-black p-2 rounded w-40"
+          placeholder=""
+          className="col-span-1 p-2 rounded border border-black text-black"
+          aria-label="Name"
           required
         />
 
-        {/* Mobile No */}
         <input
           type="tel"
           value={mobileNo}
           onChange={(e) => setMobileNo(e.target.value)}
-          placeholder="Mobile No."
-          className="bg-white text-black p-2 rounded w-36"
+          placeholder=""
+          className="col-span-1 p-2 rounded border border-black text-black"
+          aria-label="Mobile No."
           required
         />
 
-        {/* E-mail */}
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="E-mail"
-          className="bg-white text-black p-2 rounded w-44"
+          placeholder=""
+          className="col-span-1 p-2 rounded border border-black text-black"
+          aria-label="E-mail"
           required
         />
 
-        {/* Book Now */}
+        {/* Book Now button */}
         <button
           type="submit"
-          disabled={sending}
-          className={`border border-red-700 text-red-700 font-semibold px-6 py-2 rounded hover:bg-red-700 hover:text-white transition ${
-            sending ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+          className="col-span-1 border border-red-600 text-red-600 font-bold rounded py-2 px-5 hover:bg-red-600 hover:text-white transition"
         >
-          {sending ? "Sending..." : "Book Now"}
+          Book Now
         </button>
       </form>
 
-      {/* Status Message */}
-      {message && (
-        <p className="mt-2 text-center text-sm text-red-700 font-semibold">
-          {message}
-        </p>
-      )}
-
-      {/* Contact Info */}
-      <div className="mt-6 bg-[#473605] text-white text-center py-3 rounded">
+      {/* Contact bar */}
+      <div className="bg-[#473605] text-white text-center py-4 px-3 tracking-wide">
         <h2 className="font-bold text-lg mb-1">Direct Hotel Booking</h2>
         <p className="text-sm">
           Phone No. +91 80191600498 | Reservation Number , Email:{" "}
-          <a
-            href="mailto:reservations@blossomhotels.in"
-            className="underline"
-          >
+          <a href="mailto:reservations@blossomhotels.in" className="underline">
             reservations@blossomhotels.in
           </a>
         </p>
       </div>
 
       {/* Benefits Banner */}
-      <div className="mt-8 max-w-full overflow-x-auto">
+      <div className="mt-8 overflow-x-auto">
         <div
-          className="relative bg-black bg-opacity-70 rounded-lg shadow-lg flex items-center justify-between px-6 py-4 max-w-full whitespace-nowrap text-white font-bold text-xl"
+          className="relative bg-black bg-opacity-90 rounded-lg shadow-lg flex items-center justify-between px-6 py-4 whitespace-nowrap text-white font-bold text-xl max-w-full"
           style={{
-            clipPath:
-              "polygon(0 0, calc(100% - 30px) 0, 100% 50%, calc(100% - 30px) 100%, 0 100%)",
+            clipPath: "polygon(0 0, calc(100% - 30px) 0, 100% 50%, calc(100% - 30px) 100%, 0 100%)",
           }}
         >
           <div>
@@ -187,7 +143,8 @@ export default function DirectBookingForm() {
             </span>
           </div>
 
-          <div className="flex space-x-16 ml-10 text-base font-semibold">
+          <div className="flex space-x-12 ml-10 text-base font-semibold">
+            {/* Room Upgrade */}
             <div className="flex items-center space-x-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -200,6 +157,8 @@ export default function DirectBookingForm() {
               </svg>
               <span>ROOM UPGRADE</span>
             </div>
+
+            {/* Early Check-In */}
             <div className="flex items-center space-x-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -211,6 +170,8 @@ export default function DirectBookingForm() {
               </svg>
               <span>EARLY CHECK-IN</span>
             </div>
+
+            {/* Late Check-Out */}
             <div className="flex items-center space-x-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
