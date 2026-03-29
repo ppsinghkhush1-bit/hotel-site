@@ -63,8 +63,12 @@ export default function BookingModal({
         .from('bookings')
         .insert([
           {
-            room_id: finalRoomId,
-            hotel_id: "GREEN_GARDEN_RESORT",
+            // 1. MUST BE A VALID UUID (e.g., "1cff9f52-...")
+            room_id: finalRoomId, 
+            
+            // 2. THIS IS TEXT, so "GREEN_GARDEN_RESORT" is fine here
+            hotel_id: "GREEN_GARDEN_RESORT", 
+      
             guest_name: customerName,
             guest_email: customerEmail,
             guest_phone: customerPhone,
