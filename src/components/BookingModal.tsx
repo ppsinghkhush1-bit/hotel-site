@@ -1,306 +1,201 @@
-import React, { useState, useMemo } from "react";
+// BookingModal.tsx
+import React, { useState } from "react";
 import emailjs from "@emailjs/browser";
+import { X, CheckCircle } from "lucide-react";
 
 const EMAILJS_SERVICE_ID = "service_12y6xre";
 const EMAILJS_TEMPLATE_ID = "template_1scrkoq";
 const EMAILJS_PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
 
-interface Room {
-  id: number;
-  name: string;
-  price_per_night: number;
-  available: boolean;
+interface BookingModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  roomName: string;
+  roomPrice: number;
 }
 
-const rooms: Room[] = [
-  { id: 1, name: "Deluxe Garden Suite", price_per_night: 2500, available: true },
-  { id: 2, name: "Premium Green Room", price_per_night: 3200, available: true },
-  { id: 3, name: "Family Suite", price_per_night: 4000, available: false } // example unavailable room
-];
-
-export default function RoomsBooking() {
+export default function BookingModal({ isOpen, onClose, roomName, roomPrice }: BookingModalProps) {
   const today = new Date().toISOString().split("T")[0];
 
-  // State to track which room was selected for booking:
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-
-  // Booking form states:
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [name, setName] = useState("");
   const [mobileNo, setMobileNo] = useState("");
   const [email, setEmail] = useState("");
-  const [addBreakfast, setAddBreakfast] = useState(false);
   const [sending, setSending] = useState(false);
-  const [message, setMessage] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
-  // Calculate nights (default 1)
-  const nights = useMemo(() => {
+  // Calculate nights between dates, fallback to 1
+  const getNights = () => {
     if (!checkIn || !checkOut) return 1;
-    const diff =
-      (new Date(checkOut).getTime() - new Date(checkIn).getTime()) /
-      (1000 * 60 * 60 * 24);
-    return diff > 0 ? diff : 1;
-  }, [checkIn, checkOut]);
-
-  // Total price calculation:
-  const totalPrice = useMemo(() => {
-    if (!selectedRoom) return 0;
-    const base = selectedRoom.price_per_night;
-    const breakfast = addBreakfast ? 200 : 0;
-    return (base + breakfast) * nights;
-  }, [selectedRoom, addBreakfast, nights]);
-
-  // When clicking “Book Now” on room card
-  const handleRoomBookClick = (room: Room) => {
-    if (!room.available) {
-      alert("This room is not currently available.");
-      return;
-    }
-    setSelectedRoom(room);
-    // Reset form fields on new room selection
-    setCheckIn("");
-    setCheckOut("");
-    setName("");
-    setMobileNo("");
-    setEmail("");
-    setAddBreakfast(false);
-    setMessage("");
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 1;
   };
 
-  const handleBookingSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const nights = getNights();
+  const totalPrice = roomPrice * nights;
 
-    if (
-      !selectedRoom ||
-      !checkIn ||
-      !checkOut ||
-      !name.trim() ||
-      !mobileNo.trim() ||
-      !email.trim()
-    ) {
-      setMessage("Please fill in all the fields.");
+  const handleConfirmBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!checkIn || !checkOut || !name || !mobileNo || !email) {
+      setError("Please fill all fields.");
       return;
     }
 
     setSending(true);
-    setMessage("");
-
     try {
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
-          room_type: selectedRoom.name,
-          base_price: selectedRoom.price_per_night.toString(),
-          add_breakfast: addBreakfast ? "Yes" : "No",
+          room_name: roomName,
           total_price: `₹${totalPrice}`,
           check_in: checkIn,
           check_out: checkOut,
           customer_name: name,
           customer_mobile: mobileNo,
-          customer_email: email
+          customer_email: email,
+          nights: nights.toString(),
         },
         EMAILJS_PUBLIC_KEY
       );
-
-      setMessage("Booking request sent successfully!");
-      // Optionally reset form or room selection after success
-      setSelectedRoom(null);
-      setCheckIn("");
-      setCheckOut("");
-      setName("");
-      setMobileNo("");
-      setEmail("");
-      setAddBreakfast(false);
-    } catch (error) {
-      console.error("Booking send error:", error);
-      setMessage("Failed to send booking request. Please try again.");
+      setSuccess(true);
+    } catch (err) {
+      setError("Booking failed. Please try again later.");
+      console.error(err);
     } finally {
       setSending(false);
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="max-w-7xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Available Rooms</h1>
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 backdrop-blur-md p-5">
+      <div className="bg-white rounded-xl max-w-md w-full p-8 relative shadow-xl">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
+          aria-label="Close booking modal"
+          type="button"
+        >
+          <X size={24} />
+        </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        {rooms.map((room) => (
-          <div key={room.id} className="border rounded p-4 shadow flex flex-col">
-            <h2 className="font-semibold text-xl">{room.name}</h2>
-            <p className="text-green-700 font-bold text-lg mb-4">
-              ₹{room.price_per_night.toLocaleString("en-IN")}
-            </p>
-            {!room.available ? (
-              <button
-                disabled
-                className="py-2 px-4 rounded bg-gray-400 text-white cursor-not-allowed"
-              >
-                Not Available
-              </button>
-            ) : (
-              <button
-                onClick={() => handleRoomBookClick(room)}
-                className="py-2 px-4 bg-red-600 text-white rounded hover:bg-red-700 transition"
-              >
-                Book Now
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Booking Form Bar shown only when a room is selected */}
-      {selectedRoom && (
-        <section className="sticky bottom-0 bg-white border-t border-gray-300 shadow-lg p-4">
-          <form
-            onSubmit={handleBookingSubmit}
-            className="flex flex-nowrap items-center gap-4 max-w-full overflow-x-auto"
-          >
-            {/* Room Name (read-only display) */}
-            <div className="min-w-[150px] font-bold text-gray-900 truncate">
-              {selectedRoom.name}
-            </div>
-
-            {/* Check In */}
-            <div className="flex flex-col min-w-[140px]">
-              <label
-                htmlFor="checkIn"
-                className="text-xs font-semibold uppercase mb-1 text-gray-700"
-              >
-                Check In
-              </label>
-              <input
-                id="checkIn"
-                type="date"
-                value={checkIn}
-                min={today}
-                onChange={(e) => setCheckIn(e.target.value)}
-                className="border border-gray-400 rounded-md px-3 py-2"
-                required
-              />
-            </div>
-
-            {/* Check Out */}
-            <div className="flex flex-col min-w-[140px]">
-              <label
-                htmlFor="checkOut"
-                className="text-xs font-semibold uppercase mb-1 text-gray-700"
-              >
-                Check Out
-              </label>
-              <input
-                id="checkOut"
-                type="date"
-                value={checkOut}
-                min={checkIn || today}
-                onChange={(e) => setCheckOut(e.target.value)}
-                className="border border-gray-400 rounded-md px-3 py-2"
-                required
-              />
-            </div>
-
-            {/* Name */}
-            <div className="flex flex-col min-w-[160px]">
-              <label
-                htmlFor="name"
-                className="text-xs font-semibold uppercase mb-1 text-gray-700"
-              >
-                Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Full name"
-                className="border border-gray-400 rounded-md px-3 py-2"
-                required
-              />
-            </div>
-
-            {/* Mobile */}
-            <div className="flex flex-col min-w-[140px]">
-              <label
-                htmlFor="mobileNo"
-                className="text-xs font-semibold uppercase mb-1 text-gray-700"
-              >
-                Mobile No.
-              </label>
-              <input
-                id="mobileNo"
-                type="tel"
-                value={mobileNo}
-                onChange={(e) => setMobileNo(e.target.value)}
-                placeholder="+91 9000000000"
-                className="border border-gray-400 rounded-md px-3 py-2"
-                required
-              />
-            </div>
-
-            {/* Email */}
-            <div className="flex flex-col min-w-[180px]">
-              <label
-                htmlFor="email"
-                className="text-xs font-semibold uppercase mb-1 text-gray-700"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
-                className="border border-gray-400 rounded-md px-3 py-2"
-                required
-              />
-            </div>
-
-            {/* Breakfast checkbox */}
-            <label className="inline-flex items-center min-w-[140px] gap-2 text-gray-700 text-xs font-semibold whitespace-nowrap">
-              <input
-                type="checkbox"
-                checked={addBreakfast}
-                onChange={(e) => setAddBreakfast(e.target.checked)}
-                className="w-4 h-4"
-              />
-              Add Breakfast ₹200
-            </label>
-
-            {/* Total Price */}
-            <div className="min-w-[140px] font-bold text-lg flex items-center justify-center whitespace-nowrap text-gray-900">
-              ₹{totalPrice.toLocaleString("en-IN")}
-            </div>
-
-            {/* Book Now button */}
+        {success ? (
+          <div className="text-center">
+            <CheckCircle size={64} className="mx-auto text-green-600 mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Booking Confirmed!</h2>
+            <p className="mb-6">Thank you for booking. Confirmation sent to your email.</p>
             <button
-              type="submit"
-              disabled={sending}
-              className={`min-w-[130px] px-6 py-3 rounded border border-red-600 font-bold transition ${
-                sending
-                  ? "bg-red-600 text-white cursor-not-allowed opacity-50"
-                  : "text-red-600 hover:bg-red-600 hover:text-white"
-              }`}
+              onClick={onClose}
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition"
+              type="button"
             >
-              {sending ? "Booking..." : "Book Now"}
+              Close
             </button>
-          </form>
+          </div>
+        ) : (
+          <>
+            <h2 className="text-xl font-bold mb-6 text-center">Book Your Stay</h2>
+            <form onSubmit={handleConfirmBooking} className="space-y-4">
+              <div>
+                <label htmlFor="checkIn" className="block text-sm font-semibold mb-1">
+                  Check-In
+                </label>
+                <input
+                  type="date"
+                  id="checkIn"
+                  value={checkIn}
+                  min={today}
+                  onChange={(e) => setCheckIn(e.target.value)}
+                  className="w-full p-3 border rounded"
+                  required
+                />
+              </div>
 
-          {message && (
-            <p
-              className={`mt-3 mx-auto max-w-2xl text-center font-semibold ${
-                message.includes("success")
-                  ? "text-green-600"
-                  : "text-red-600"
-              }`}
-            >
-              {message}
-            </p>
-          )}
-        </section>
-      )}
+              <div>
+                <label htmlFor="checkOut" className="block text-sm font-semibold mb-1">
+                  Check-Out
+                </label>
+                <input
+                  type="date"
+                  id="checkOut"
+                  value={checkOut}
+                  min={checkIn || today}
+                  onChange={(e) => setCheckOut(e.target.value)}
+                  className="w-full p-3 border rounded"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="name" className="block text-sm font-semibold mb-1">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full p-3 border rounded"
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="mobileNo" className="block text-sm font-semibold mb-1">
+                  Mobile No.
+                </label>
+                <input
+                  type="tel"
+                  id="mobileNo"
+                  value={mobileNo}
+                  onChange={(e) => setMobileNo(e.target.value)}
+                  className="w-full p-3 border rounded"
+                  placeholder="+91 9876543210"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-semibold mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full p-3 border rounded"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+
+              {error && <p className="text-red-600">{error}</p>}
+
+              <div className="text-lg font-semibold mt-4">
+                Total Price: <span className="text-emerald-600">₹{totalPrice}</span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={sending}
+                className="mt-4 w-full bg-red-600 text-white py-3 rounded hover:bg-red-700 transition disabled:opacity-50"
+              >
+                {sending ? "Sending..." : "Confirm Booking"}
+              </button>
+            </form>
+          </>
+        )}
+      </div>
     </div>
   );
 }
