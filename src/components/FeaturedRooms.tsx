@@ -1,173 +1,101 @@
+import { Calendar, Users, ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { useState } from 'react';
 
-export default function DirectBookingForm() {
-  const [hotel, setHotel] = useState('Blossom');
+interface BookingFormProps {
+  onSearch?: (filters: { checkIn: string; checkOut: string; guests: number }) => void;
+}
+
+export default function BookingForm({ onSearch }: BookingFormProps) {
+  const today = new Date().toISOString().split('T')[0];
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
-  const [name, setName] = useState('');
-  const [mobileNo, setMobileNo] = useState('');
-  const [email, setEmail] = useState('');
+  const [guests, setGuests] = useState(1);
+
+  const incrementGuests = () => setGuests((g) => Math.min(g + 1, 10));
+  const decrementGuests = () => setGuests((g) => Math.max(g - 1, 1));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Booking Submitted for ${name} at ${hotel}`);
+    if (onSearch) onSearch({ checkIn, checkOut, guests });
   };
 
   return (
-    <section className="p-4 bg-transparent">
-      {/* Booking Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-wrap gap-4 items-center justify-center max-w-full overflow-x-auto
-          bg-white/10 backdrop-blur-md rounded-3xl p-6 shadow-lg"
-      >
-        {/* Hotel Select */}
-        <label className="flex flex-col text-white font-semibold text-sm">
-          Hotel
-          <select
-            value={hotel}
-            onChange={(e) => setHotel(e.target.value)}
-            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white text-black shadow-sm"
-          >
-            <option value="Blossom">Blossom</option>
-            <option value="Another Hotel">Another Hotel</option>
-          </select>
+    <form
+      onSubmit={handleSubmit}
+      className="max-w-5xl mx-auto flex flex-wrap gap-6 items-center justify-center py-8 px-6
+        bg-black bg-opacity-30 backdrop-blur-md rounded-3xl shadow-lg"
+      style={{ minWidth: '320px' }}
+    >
+      {/* Check In */}
+      <div className="flex flex-col w-40">
+        <label className="flex items-center gap-2 text-white font-semibold tracking-wide text-xs uppercase mb-2">
+          <Calendar size={16} /> CHECK-IN
         </label>
-
-        {/* Check In */}
-        <label className="flex flex-col text-white font-semibold text-sm">
-          Check In
-          <input
-            type="date"
-            placeholder="-- --"
-            value={checkIn}
-            onChange={(e) => setCheckIn(e.target.value)}
-            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white/70 text-black placeholder-black/60 shadow-sm"
-          />
-        </label>
-
-        {/* Check Out */}
-        <label className="flex flex-col text-white font-semibold text-sm">
-          Check Out
-          <input
-            type="date"
-            placeholder="-- --"
-            value={checkOut}
-            onChange={(e) => setCheckOut(e.target.value)}
-            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white/70 text-black placeholder-black/60 shadow-sm"
-          />
-        </label>
-
-        {/* Name */}
-        <label className="flex flex-col font-semibold text-sm">
-          <span className="text-white">Name</span>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white/70 text-black placeholder-black/60 shadow-sm"
-            required
-          />
-        </label>
-
-        {/* Mobile No */}
-        <label className="flex flex-col text-white font-semibold text-sm">
-          Mobile No.
-          <input
-            type="tel"
-            value={mobileNo}
-            onChange={(e) => setMobileNo(e.target.value)}
-            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white/70 text-black placeholder-black/60 shadow-sm"
-            required
-          />
-        </label>
-
-        {/* E-mail */}
-        <label className="flex flex-col text-white font-semibold text-sm">
-          E-mail
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 mx-2 p-2 rounded border border-gray-300 bg-white/70 text-black placeholder-black/60 shadow-sm"
-            required
-          />
-        </label>
-
-        {/* Book Now Button */}
-        <button
-          type="submit"
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl ml-2 shadow-md transition"
-        >
-          Book Now
-        </button>
-      </form>
-
-      {/* Contact info */}
-      <div className="mt-4 text-center text-gray-300 text-sm">
-        Phone No. +91 07814 91779 | Reservation Number | Email: hotelgreengarden0112@gmail.com
+        <input
+          type="date"
+          min={today}
+          value={checkIn}
+          onChange={(e) => setCheckIn(e.target.value)}
+          placeholder="-- --"
+          className="bg-transparent border border-white/50 rounded-xl px-4 py-3 text-white placeholder-white/70 text-lg font-semibold
+            focus:outline-none focus:ring-2 focus:ring-emerald-400 transition"
+          required
+        />
       </div>
 
-      {/* Benefits of Direct Booking Banner */}
-      <div className="mt-8 max-w-full overflow-x-auto">
-        <div
-          className="relative bg-black bg-opacity-40 rounded-lg shadow-lg flex items-center justify-between px-6 py-4 max-w-full whitespace-nowrap text-white font-bold text-xl"
-          style={{
-            clipPath:
-              'polygon(0 0, calc(100% - 30px) 0, 100% 50%, calc(100% - 30px) 100%, 0 100%)',
-          }}
-        >
-          {/* Text Section */}
-          <div>
-            BENEFITS OF DIRECT <span className="underline">BOOKING</span>
-            <br />
-            <span className="text-sm font-normal normal-case mt-1 block">
-              *Subject To Availability
-            </span>
-          </div>
+      {/* Check Out */}
+      <div className="flex flex-col w-40">
+        <label className="flex items-center gap-2 text-white font-semibold tracking-wide text-xs uppercase mb-2">
+          <Calendar size={16} /> CHECK-OUT
+        </label>
+        <input
+          type="date"
+          min={checkIn || today}
+          value={checkOut}
+          onChange={(e) => setCheckOut(e.target.value)}
+          placeholder="-- --"
+          className="bg-transparent border border-white/50 rounded-xl px-4 py-3 text-white placeholder-white/70 text-lg font-semibold
+            focus:outline-none focus:ring-2 focus:ring-emerald-400 transition"
+          required
+        />
+      </div>
 
-          {/* Icons with labels */}
-          <div className="flex space-x-16 ml-10 text-base font-semibold">
-            {/* ROOM UPGRADE */}
-            <div className="flex items-center space-x-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M3 10h2v4H3v-4zm4 0h2v4H7v-4zm4 0h2v4h-2v-4zm4 0h2v4h-2v-4zM21 10h-2v4h2v-4z" />
-                <path d="M17 10V5a2 2 0 00-2-2H9a2 2 0 00-2 2v5h10z" />
-              </svg>
-              <span>ROOM UPGRADE</span>
-            </div>
-            {/* EARLY CHECK-IN */}
-            <div className="flex items-center space-x-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M8 7V3m8 4V3m-4 18v-4m-2-5h4m-6 7a9 9 0 11-2-7.89M12 8v4l2 2" />
-              </svg>
-              <span>EARLY CHECK-IN</span>
-            </div>
-            {/* LATE CHECK-OUT */}
-            <div className="flex items-center space-x-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 4v2m0 12v2m8-10h-3M7 8H4m16 4h-3M7 16H4m14.364-1.636l-2.121-2.12M7.757 7.757L5.636 5.636m0 10.728l2.121-2.12M16.243 16.243l2.121 2.122" />
-              </svg>
-              <span>LATE CHECK-OUT</span>
-            </div>
-          </div>
+      {/* Guests */}
+      <div className="flex flex-col w-40">
+        <label className="flex items-center gap-2 text-white font-semibold tracking-wide text-xs uppercase mb-2">
+          <Users size={16} /> GUESTS
+        </label>
+        <div className="relative bg-transparent border border-white/50 rounded-xl flex items-center justify-center text-white font-semibold text-lg px-5 py-3">
+          <button
+            type="button"
+            onClick={decrementGuests}
+            disabled={guests === 1}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-white disabled:opacity-50"
+            aria-label="Decrease Guests"
+          >
+            <ChevronDown size={20} />
+          </button>
+          <span className="mx-auto select-none">{guests} Guest{guests > 1 ? 's' : ''}</span>
+          <button
+            type="button"
+            onClick={incrementGuests}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-white"
+            aria-label="Increase Guests"
+          >
+            <ChevronUp size={20} />
+          </button>
         </div>
       </div>
-    </section>
+
+      {/* Search Button */}
+      <button
+        type="submit"
+        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase text-lg 
+          rounded-xl py-3 px-10 flex items-center gap-3 shadow-lg transition"
+      >
+        <Search size={22} />
+        SEARCH ROOMS
+      </button>
+    </form>
   );
 }
