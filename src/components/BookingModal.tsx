@@ -1,4 +1,4 @@
-import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { X, Calendar, User, CheckCircle2, AlertCircle, Mail, Phone, Info } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import emailjs from '@emailjs/browser';
@@ -15,33 +15,37 @@ export default function BookingModal({
   checkOut: initialCheckOut = '', 
   guests = 2 
 }: any) {
+  // --- FORM STATES ---
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+
+  // --- DATE LOGIC ---
+  const today = new Date().toISOString().split('T')[0];
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const [dateIn, setDateIn] = useState(initialCheckIn || today);
+  const [dateOut, setDateOut] = useState(initialCheckOut || tomorrow);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // --- FORCE VALID DATES (Fixes the "type date: ''" error) ---
-  const todayDate = new Date().toISOString().split('T')[0];
-  const tomorrowDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-
-  const finalCheckIn = initialCheckIn || todayDate;
-  const finalCheckOut = initialCheckOut || tomorrowDate;
-
+  // --- PRICE CALCULATIONS ---
   const nights = useMemo(() => {
-    const diff = Math.ceil((new Date(finalCheckOut).getTime() - new Date(finalCheckIn).getTime()) / (1000 * 60 * 60 * 24));
+    const start = new Date(dateIn);
+    const end = new Date(dateOut);
+    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 1;
-  }, [finalCheckIn, finalCheckOut]);
+  }, [dateIn, dateOut]);
 
   const grandTotal = useMemo(() => {
-    const price = Number(room?.price_per_night) || 1500;
+    const price = Number(room?.price_per_night || room?.price) || 1500;
     return price * nights;
   }, [room, nights]);
 
   const handleConfirmBooking = async () => {
     if (!customerName || !customerEmail || !customerPhone) {
-      setSubmitError("Please provide your name, email, and phone.");
+      setSubmitError("Please fill all details.");
       return;
     }
 
@@ -49,18 +53,18 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // --- UUID PROTECTION ---
+      // UUID Regex to ensure database safety
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       const validRoomId = uuidRegex.test(room?.id) ? room.id : '1cff9f52-513d-4a30-89dc-b2d6fa357842';
 
       const { error: dbError } = await supabase.from('bookings').insert([{
         room_id: validRoomId,
-        hotel_id: "HOTEL_GREEN_GARDEN",
+        hotel_id: "GREEN_GARDEN_RESORT",
         guest_name: customerName,
         guest_email: customerEmail,
         guest_phone: customerPhone,
-        check_in: finalCheckIn,
-        check_out: finalCheckOut,
+        check_in: dateIn,
+        check_out: dateOut,
         num_guests: Number(guests),
         total_price: Number(grandTotal),
         status: 'pending'
@@ -72,14 +76,14 @@ export default function BookingModal({
         customer_name: customerName,
         customer_email: customerEmail,
         room_type: room?.room_type || "Standard Room",
-        total_price: grandTotal,
-        check_in: finalCheckIn,
-        check_out: finalCheckOut
+        total_price: `₹${grandTotal}`,
+        check_in: dateIn,
+        check_out: dateOut
       }, EMAILJS_PUBLIC_KEY);
 
       setSubmitSuccess(true);
     } catch (err: any) {
-      setSubmitError(err.message || "Connection error. Try again.");
+      setSubmitError(err.message || "Failed to save booking.");
     } finally {
       setIsSubmitting(false);
     }
@@ -89,71 +93,92 @@ export default function BookingModal({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-4xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row">
+      <div className="relative w-full max-w-4xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in fade-in zoom-in duration-300">
         
-        {/* Left Sidebar (Matches your screenshot design) */}
-        <div className="hidden md:flex w-1/3 bg-[#0f172a] p-10 flex-col justify-between text-white">
+        {/* --- ORIGINAL DARK SIDEBAR DESIGN --- */}
+        <div className="hidden md:flex w-1/3 bg-[#0f172a] p-10 flex-col justify-between text-white text-left">
           <div>
-            <h2 className="text-3xl font-bold">{room?.room_type || "Standard Room"}</h2>
-            <p className="mt-4 text-slate-400 text-sm">Affordable and comfortable room with essential facilities.</p>
+            <h2 className="text-3xl font-bold tracking-tight">{room?.room_type || "Luxury Room"}</h2>
+            <p className="mt-4 text-slate-400 text-sm leading-relaxed">
+              Experience the perfect blend of comfort and luxury at Green Garden. Your reservation request will be handled by our 24/7 reception team.
+            </p>
           </div>
-          <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-2">
-            <Info size={16} className="text-emerald-400" />
-            <p className="text-[10px]">Your request is sent directly to our reception.</p>
+          <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-start gap-3">
+            <Info size={18} className="text-emerald-400 mt-0.5" />
+            <p className="text-[11px] text-slate-300 leading-snug">
+              Instant confirmation will be sent to your email after the reception reviews your request.
+            </p>
           </div>
         </div>
 
-        {/* Right Form Area */}
-        <div className="flex-1 p-8 lg:p-12 bg-white">
+        {/* --- CLEAN FORM DESIGN --- */}
+        <div className="flex-1 p-8 lg:p-12 bg-white overflow-y-auto max-h-[90vh]">
           {submitSuccess ? (
-            <div className="text-center py-12">
-              <CheckCircle2 size={60} className="text-emerald-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold">Reservation Sent!</h2>
-              <p className="text-slate-500 mt-2">We will contact you shortly.</p>
-              <button onClick={onClose} className="mt-8 px-10 py-3 bg-slate-900 text-white rounded-xl">Close</button>
+            <div className="text-center py-16 animate-in slide-in-from-bottom duration-500">
+              <CheckCircle2 size={64} className="text-emerald-500 mx-auto mb-6" />
+              <h2 className="text-3xl font-extrabold text-slate-900">Booking Sent!</h2>
+              <p className="text-slate-500 mt-3 text-lg">We'll reach out to you shortly.</p>
+              <button onClick={onClose} className="mt-10 px-12 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all">Done</button>
             </div>
           ) : (
-            <div className="space-y-6 text-left">
+            <div className="space-y-8 text-left">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-slate-800">Reservation Details</h2>
-                <button onClick={onClose} className="hover:bg-slate-100 p-2 rounded-full"><X /></button>
+                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Reservation Details</h2>
+                <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><X size={24}/></button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Name */}
                 <div className="md:col-span-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white outline-none focus:border-emerald-500 transition-all" 
-                    value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Full Name" />
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2"><User size={12}/> Guest Name</label>
+                  <input className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-50/50 transition-all" 
+                    value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Full legal name" />
+                </div>
+
+                {/* Email & Phone */}
+                <div>
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2"><Mail size={12}/> Email</label>
+                  <input className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:border-emerald-500 focus:bg-white transition-all" 
+                    value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="email@address.com" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white outline-none focus:border-emerald-500 transition-all" 
-                    value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email" />
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2"><Phone size={12}/> Phone</label>
+                  <input className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:border-emerald-500 focus:bg-white transition-all" 
+                    value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="+91 00000 00000" />
+                </div>
+
+                {/* Check-In & Check-Out */}
+                <div>
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2"><Calendar size={12}/> Check-In</label>
+                  <input type="date" min={today} className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:border-emerald-500 focus:bg-white" 
+                    value={dateIn} onChange={e => setDateIn(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Phone</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white outline-none focus:border-emerald-500 transition-all" 
-                    value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone" />
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2"><Calendar size={12}/> Check-Out</label>
+                  <input type="date" min={dateIn} className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:border-emerald-500 focus:bg-white" 
+                    value={dateOut} onChange={e => setDateOut(e.target.value)} />
                 </div>
               </div>
 
-              <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 mt-4 flex justify-between items-center">
-                <div>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Total Price</p>
-                  <p className="text-4xl font-black text-emerald-600">₹{grandTotal}</p>
+              {/* Total Summary Footer */}
+              <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 mt-10 flex flex-col sm:flex-row justify-between items-center gap-8">
+                <div className="text-center sm:text-left">
+                  <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Est. Total ({nights} nights)</p>
+                  <p className="text-5xl font-black text-emerald-600 tracking-tighter">₹{grandTotal}</p>
                 </div>
+                
                 <button 
                   onClick={handleConfirmBooking}
                   disabled={isSubmitting}
-                  className="px-10 py-5 bg-[#10b981] text-white rounded-2xl font-bold shadow-lg hover:bg-emerald-600 transition-all active:scale-95 disabled:bg-slate-300"
+                  className="w-full sm:w-auto px-12 py-6 bg-[#10b981] text-white rounded-3xl font-black text-xl shadow-2xl shadow-emerald-200 hover:bg-emerald-600 hover:-translate-y-1 active:scale-95 disabled:bg-slate-300 disabled:shadow-none transition-all"
                 >
                   {isSubmitting ? "Sending..." : "Confirm Booking"}
                 </button>
               </div>
 
               {submitError && (
-                <div className="mt-2 p-3 bg-red-50 text-red-600 rounded-xl text-xs flex items-center gap-2 border border-red-100 font-medium">
-                  <AlertCircle size={14} /> {submitError}
+                <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-[11px] font-bold flex items-center gap-2 border border-red-100">
+                  <AlertCircle size={16} /> {submitError}
                 </div>
               )}
             </div>
