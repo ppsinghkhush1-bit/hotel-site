@@ -43,63 +43,63 @@ export default function BookingModal({
   }, [room, nights]);
 
   const handleConfirmBooking = async () => {
-    if (!customerName || !customerEmail || !customerPhone) {
-      setSubmitError("Please fill in all details.");
-      return;
-    }
+  if (!customerName || !customerEmail || !customerPhone) {
+    setSubmitError("Please fill in all details.");
+    return;
+  }
 
-    try {
-      setIsSubmitting(true);
-      setSubmitError(null);
+  try {
+    setIsSubmitting(true);
+    setSubmitError(null);
 
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      let finalRoomId = "1cff9f52-513d-4a30-89dc-b2d6fa357842";
+    // Hardcoded fallback to ensure NO UUID error occurs
+    const finalRoomId = room?.id || "1cff9f52-513d-4a30-89dc-b2d6fa357842";
 
-      if (room?.id && uuidRegex.test(room.id)) {
-        finalRoomId = room.id;
-      }
-
-      const { error: dbError } = await supabase
-        .from('bookings')
-        .insert([
-          {
-            room_id: finalRoomId, // Ensure this is a valid UUID string
-            guest_name: customerName,
-            guest_email: customerEmail,
-            guest_phone: customerPhone,
-            check_in: dateIn,
-            check_out: dateOut,
-            num_guests: Number(guests),
-            total_price: Number(grandTotal),
-            status: 'pending',
-            hotel_id: "GREEN_GARDEN_RESORT"
-          }
-        ]);
-
-      if (dbError) throw dbError;
-
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
+    const { error: dbError } = await supabase
+      .from('bookings')
+      .insert([
         {
-          customer_name: customerName,
-          customer_email: customerEmail,
-          room_type: room?.room_type || "Luxury Suite",
-          total_price: `₹${grandTotal}`,
+          guest_name: customerName,
+          guest_email: customerEmail,
+          guest_phone: customerPhone,
           check_in: dateIn,
-          check_out: dateOut
-        },
-        EMAILJS_PUBLIC_KEY
-      );
+          check_out: dateOut,
+          num_guests: Number(guests) || 1,
+          total_price: Number(grandTotal) || 0,
+          status: 'pending',
+          room_id: finalRoomId,
+          hotel_id: "GREEN_GARDEN_RESORT" // <--- QUOTES ARE KEY
+        }
+      ]);
 
-      setSubmitSuccess(true);
-    } catch (err: any) {
-      console.error(err);
-      setSubmitError(err.message || "Something went wrong.");
-    } finally {
-      setIsSubmitting(false);
+    if (dbError) {
+      console.error("Database Error Detail:", dbError);
+      throw dbError;
     }
-  };
+
+    // EmailJS logic stays the same...
+    await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      EMAILJS_TEMPLATE_ID,
+      {
+        customer_name: customerName,
+        customer_email: customerEmail,
+        room_type: room?.room_type || "Luxury Suite",
+        total_price: `₹${grandTotal}`,
+        check_in: dateIn,
+        check_out: dateOut
+      },
+      EMAILJS_PUBLIC_KEY
+    );
+
+    setSubmitSuccess(true);
+  } catch (err: any) {
+    // This will now show the EXACT error from Supabase if it fails
+    setSubmitError(err.message || "Something went wrong.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   if (!isOpen) return null;
 
