@@ -1,214 +1,240 @@
-import React, { useState, useMemo } from "react";
+// BookingModal.tsx
+import React, { useState, useEffect, useMemo } from "react";
 import emailjs from "@emailjs/browser";
+import { X, CheckCircle } from "lucide-react";
 
 const EMAILJS_SERVICE_ID = "service_12y6xre";
 const EMAILJS_TEMPLATE_ID = "template_1scrkoq";
 const EMAILJS_PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
 
-export default function BookingBar() {
+interface BookingModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  room: {
+    room_type: string;
+    price_per_night: number;
+    description?: string;
+  } | null;
+}
+
+export default function BookingModal({ isOpen, onClose, room }: BookingModalProps) {
   const today = new Date().toISOString().split("T")[0];
 
-  const BASE_ROOM_PRICE = 2500;   // Example dynamic room price from your backend
-  const BREAKFAST_PRICE = 200;
-
-  // Form state
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [name, setName] = useState("");
   const [mobileNo, setMobileNo] = useState("");
   const [email, setEmail] = useState("");
   const [addBreakfast, setAddBreakfast] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [message, setMessage] = useState("");
 
-  // Calculate nights (default 1, no NaN)
+  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // Calculate nights between dates
   const nights = useMemo(() => {
     if (!checkIn || !checkOut) return 1;
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const d1 = new Date(checkIn);
+    const d2 = new Date(checkOut);
+    const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24));
     return diff > 0 ? diff : 1;
   }, [checkIn, checkOut]);
 
-  // Calculate total price dynamically
-  const totalPrice = (BASE_ROOM_PRICE + (addBreakfast ? BREAKFAST_PRICE : 0)) * nights;
+  // Calculate total price (base price + breakfast if checked) * nights
+  const BREAKFAST_PRICE = 200;
+  const basePrice = room?.price_per_night || 0;
+  const totalPrice = (basePrice + (addBreakfast ? BREAKFAST_PRICE : 0)) * nights;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Basic validation
-    if (!checkIn || !checkOut || !name || !mobileNo || !email) {
-      setMessage("Please fill all the fields.");
-      return;
-    }
-
-    setSending(true);
-    setMessage("");
-
-    try {
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
-        {
-          check_in: checkIn,
-          check_out: checkOut,
-          customer_name: name,
-          customer_mobile: mobileNo,
-          customer_email: email,
-          add_breakfast: addBreakfast ? "Yes" : "No",
-          total_price: "₹" + totalPrice,
-          room_price: BASE_ROOM_PRICE,
-          nights: nights.toString(),
-        },
-        EMAILJS_PUBLIC_KEY
-      );
-      setMessage("Your booking request was sent successfully!");
+  useEffect(() => {
+    // Reset form when room or modal closes/opens
+    if (!isOpen) {
       setCheckIn("");
       setCheckOut("");
       setName("");
       setMobileNo("");
       setEmail("");
       setAddBreakfast(false);
+      setSending(false);
+      setStatus("idle");
+      setErrorMessage("");
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !room) return null;
+
+  async function handleConfirmBooking(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!checkIn || !checkOut || !name || !mobileNo || !email) {
+      setErrorMessage("Please fill in all required fields.");
+      setStatus("error");
+      return;
+    }
+
+    setSending(true);
+    setErrorMessage("");
+    setStatus("idle");
+
+    try {
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          room_type: room.room_type,
+          base_price: basePrice,
+          breakfast_included: addBreakfast ? "Yes" : "No",
+          total_price: `₹${totalPrice}`,
+          check_in: checkIn,
+          check_out: checkOut,
+          customer_name: name,
+          customer_mobile: mobileNo,
+          customer_email: email,
+        },
+        EMAILJS_PUBLIC_KEY
+      );
+      setStatus("success");
     } catch (error) {
+      setErrorMessage("Failed to send booking request. Please try again.");
+      setStatus("error");
       console.error(error);
-      setMessage("Failed to send booking. Please try again.");
     } finally {
       setSending(false);
     }
-  };
+  }
 
   return (
-    <section className="max-w-full px-6 py-6 font-sans bg-transparent w-full">
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-nowrap overflow-x-auto gap-3 items-end max-w-full"
-        noValidate
-      >
-        <div className="text-center">
-          <div className="text-xs uppercase font-semibold mb-1">Room Price</div>
-          <div className="py-2 px-4 border border-gray-400 rounded text-black min-w-[110px] text-lg font-bold">
-            ₹{BASE_ROOM_PRICE.toLocaleString("en-IN")}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4">
+      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 transition"
+          aria-label="Close modal"
+          type="button"
+        >
+          <X size={24} />
+        </button>
+
+        {/* Left panel - room info */}
+        <div className="hidden md:flex md:w-1/3 bg-[#0f172a] p-10 flex-col justify-between text-white">
+          <div>
+            <h2 className="text-3xl font-bold mb-4">{room.room_type}</h2>
+            <p className="text-slate-400 text-sm">{room.description || "Experience comfort at Green Garden."}</p>
+          </div>
+          <div className="bg-white/5 p-5 rounded-2xl flex gap-3 mt-10">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 text-emerald-400 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+            </svg>
+            <p className="text-xs text-slate-300">
+              Confirmation will be sent via email.
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-col min-w-[140px]">
-          <label htmlFor="checkIn" className="mb-1 uppercase text-xs font-semibold text-black">
-            Check In
-          </label>
-          <input
-            id="checkIn"
-            type="date"
-            value={checkIn}
-            min={today}
-            placeholder="dd-mm-yyyy"
-            onChange={(e) => setCheckIn(e.target.value)}
-            className="border border-gray-400 rounded px-4 py-2 text-black"
-            required
-          />
+        {/* Right panel - booking form */}
+        <div className="flex-1 p-8 bg-white">
+          {status === "success" ? (
+            <div className="text-center py-16">
+              <CheckCircle size={64} className="text-emerald-500 mx-auto mb-6" />
+              <h2 className="text-3xl font-bold">Booking Sent!</h2>
+              <button
+                onClick={onClose}
+                className="mt-6 px-8 py-3 bg-black text-white rounded-xl hover:bg-gray-900"
+                type="button"
+              >
+                Done
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleConfirmBooking} className="space-y-4">
+              <input
+                type="date"
+                name="checkIn"
+                value={checkIn}
+                min={today}
+                onChange={e => setCheckIn(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded"
+                placeholder="dd-mm-yyyy"
+                required
+              />
+
+              <input
+                type="date"
+                name="checkOut"
+                value={checkOut}
+                min={checkIn || today}
+                onChange={e => setCheckOut(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded"
+                placeholder="dd-mm-yyyy"
+                required
+              />
+
+              <input
+                type="text"
+                name="name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded"
+                placeholder="Name"
+                required
+              />
+
+              <input
+                type="tel"
+                name="mobileNo"
+                value={mobileNo}
+                onChange={e => setMobileNo(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded"
+                placeholder="Mobile No."
+                required
+              />
+
+              <input
+                type="email"
+                name="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded"
+                placeholder="E-mail"
+                required
+              />
+
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={addBreakfast}
+                  onChange={e => setAddBreakfast(e.target.checked)}
+                  className="w-4 h-4 text-emerald-600 border-gray-300 rounded"
+                />
+                <span className="text-sm">Add Breakfast ₹200</span>
+              </label>
+
+              <div className="mt-4 text-lg font-bold">
+                Total Price: <span className="text-emerald-600">₹{totalPrice}</span>
+              </div>
+
+              {status === "error" && (
+                <p className="text-red-600 font-semibold">{errorMessage}</p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full mt-4 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition disabled:opacity-50"
+                disabled={sending}
+              >
+                {sending ? "Sending..." : "Confirm Booking"}
+              </button>
+            </form>
+          )}
         </div>
-
-        <div className="flex flex-col min-w-[140px]">
-          <label htmlFor="checkOut" className="mb-1 uppercase text-xs font-semibold text-black">
-            Check Out
-          </label>
-          <input
-            id="checkOut"
-            type="date"
-            value={checkOut}
-            min={checkIn || today}
-            placeholder="dd-mm-yyyy"
-            onChange={(e) => setCheckOut(e.target.value)}
-            className="border border-gray-400 rounded px-4 py-2 text-black"
-            required
-          />
-        </div>
-
-        <div className="flex flex-col min-w-[160px]">
-          <label htmlFor="name" className="mb-1 uppercase text-xs font-semibold text-black">
-            Name
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="John Doe"
-            className="border border-gray-400 rounded px-4 py-2 text-black"
-            maxLength={200}
-            required
-          />
-        </div>
-
-        <div className="flex flex-col min-w-[140px]">
-          <label htmlFor="mobileNo" className="mb-1 uppercase text-xs font-semibold text-black">
-            Mobile No.
-          </label>
-          <input
-            id="mobileNo"
-            type="tel"
-            value={mobileNo}
-            onChange={(e) => setMobileNo(e.target.value)}
-            placeholder="+91 9876543210"
-            className="border border-gray-400 rounded px-4 py-2 text-black"
-            maxLength={20}
-            required
-          />
-        </div>
-
-        <div className="flex flex-col min-w-[180px]">
-          <label htmlFor="email" className="mb-1 uppercase text-xs font-semibold text-black">
-            E-mail
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="example@mail.com"
-            className="border border-gray-400 rounded px-4 py-2 text-black"
-            maxLength={200}
-            required
-          />
-        </div>
-
-        <label className="flex items-center whitespace-nowrap min-w-[145px] gap-2 text-black text-xs font-semibold">
-          <input
-            type="checkbox"
-            checked={addBreakfast}
-            onChange={(e) => setAddBreakfast(e.target.checked)}
-            className="w-4 h-4"
-          />
-          Add Breakfast ₹200
-        </label>
-
-        <div className="min-w-[150px] text-black font-bold text-lg flex items-center justify-center whitespace-nowrap">
-          ₹{totalPrice.toLocaleString("en-IN")}
-        </div>
-
-        <button
-          type="submit"
-          disabled={sending}
-          className={`min-w-[130px] py-3 px-6 rounded border border-red-600 font-bold transition ${
-            sending
-              ? "bg-red-600 text-white opacity-50 cursor-wait"
-              : "text-red-600 hover:bg-red-600 hover:text-white"
-          }`}
-        >
-          {sending ? "Booking..." : "Book Now"}
-        </button>
-      </form>
-
-      {message && (
-        <p
-          className={`mt-3 text-center text-sm font-semibold ${
-            message.toLowerCase().includes("success")
-              ? "text-green-600"
-              : "text-red-600"
-          }`}
-        >
-          {message}
-        </p>
-      )}
-    </section>
+      </div>
+    </div>
   );
 }
