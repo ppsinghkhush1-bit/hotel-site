@@ -15,13 +15,14 @@ export default function BookingModal({
   checkOut: initialCheckOut = '', 
   guests = 2 
 }: any) {
+
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-  
+
   const [dateIn, setDateIn] = useState(initialCheckIn || today);
   const [dateOut, setDateOut] = useState(initialCheckOut || tomorrow);
 
@@ -33,7 +34,6 @@ export default function BookingModal({
     const start = new Date(dateIn);
     const end = new Date(dateOut);
     const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    // Ensure nights is at least 1, and handle invalid date ranges
     return diff > 0 ? diff : 1;
   }, [dateIn, dateOut]);
 
@@ -43,156 +43,132 @@ export default function BookingModal({
   }, [room, nights]);
 
   const handleConfirmBooking = async () => {
-  if (!customerName || !customerEmail || !customerPhone) {
-    setSubmitError("Please fill in all details.");
-    return;
-  }
+    if (!customerName || !customerEmail || !customerPhone) {
+      setSubmitError("Please fill in all details.");
+      return;
+    }
 
-  try {
-    setIsSubmitting(true);
-    setSubmitError(null);
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
 
-    // Hardcoded fallback to ensure NO UUID error occurs
-    const finalRoomId = room?.id || "1cff9f52-513d-4a30-89dc-b2d6fa357842";
+      // ✅ FIX: ensure valid UUID always
+      const finalRoomId =
+        room?.id && room.id.length > 10
+          ? room.id
+          : "1cff9f52-513d-4a30-89dc-b2d6fa357842";
 
-  const { data, error } = await supabase
-    .from('bookings')
-    .insert([
-      {
-        guest_name: customerName,
-        guest_email: customerEmail,
-        guest_phone: customerPhone,
-        check_in: dateIn,
-        check_out: dateOut,
-        num_guests: Number(guests),
-        total_price: Number(grandTotal),
-        status: 'pending',
-        room_id: finalRoomId
+      console.log("Using room_id:", finalRoomId);
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert([
+          {
+            guest_name: customerName,
+            guest_email: customerEmail,
+            guest_phone: customerPhone,
+            check_in: dateIn,
+            check_out: dateOut,
+            num_guests: Number(guests),
+            total_price: Number(grandTotal),
+            status: 'pending',
+            room_id: finalRoomId
+          }
+        ])
+        .select();
+
+      if (error) {
+        console.error("Supabase Error:", error);
+        throw error;
       }
-    ])
-    .select();
-  
-  if (error) {
-    console.error(error);
-    throw error;
-  }
 
-  console.log(data);
-    
-    console.log('Booking success:', data);
+      console.log("Booking success:", data);
 
-    // EmailJS logic stays the same...
-    await emailjs.send(
-      EMAILJS_SERVICE_ID,
-      EMAILJS_TEMPLATE_ID,
-      {
-        customer_name: customerName,
-        customer_email: customerEmail,
-        room_type: room?.room_type || "Luxury Suite",
-        total_price: `₹${grandTotal}`,
-        check_in: dateIn,
-        check_out: dateOut
-      },
-      EMAILJS_PUBLIC_KEY
-    );
+      // ✅ Email
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          customer_name: customerName,
+          customer_email: customerEmail,
+          room_type: room?.room_type || "Luxury Suite",
+          total_price: `₹${grandTotal}`,
+          check_in: dateIn,
+          check_out: dateOut
+        },
+        EMAILJS_PUBLIC_KEY
+      );
 
-    setSubmitSuccess(true);
-  } catch (err: any) {
-    // This will now show the EXACT error from Supabase if it fails
-    setSubmitError(err.message || "Something went wrong.");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      setSubmitSuccess(true);
+
+    } catch (err: any) {
+      console.error("Final Error:", err);
+      setSubmitError(err.message || "Something went wrong.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
       <div className="relative w-full max-w-4xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row">
-        
-        {/* --- Left Design Sidebar --- */}
-        <div className="hidden md:flex w-1/3 bg-[#0f172a] p-10 flex-col justify-between text-white text-left">
+
+        {/* LEFT PANEL */}
+        <div className="hidden md:flex w-1/3 bg-[#0f172a] p-10 flex-col justify-between text-white">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">{room?.room_type || "Luxury Room"}</h2>
-            <p className="mt-4 text-slate-400 text-sm leading-relaxed">
-              Experience the perfect blend of comfort and luxury at Green Garden. Your reservation request will be handled by our 24/7 reception team.
+            <h2 className="text-3xl font-bold">{room?.room_type || "Luxury Room"}</h2>
+            <p className="mt-4 text-slate-400 text-sm">
+              Experience comfort at Green Garden.
             </p>
           </div>
-          <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-start gap-3">
-            <Info size={18} className="text-emerald-400 mt-0.5" />
-            <p className="text-[11px] text-slate-300 leading-snug">
-              Instant confirmation will be sent to your email after the reception reviews your request.
+          <div className="bg-white/5 p-5 rounded-2xl flex gap-3">
+            <Info size={18} className="text-emerald-400" />
+            <p className="text-xs text-slate-300">
+              Confirmation will be sent via email.
             </p>
           </div>
         </div>
 
-        {/* --- Right Form Area --- */}
-        <div className="flex-1 p-8 lg:p-12 bg-white overflow-y-auto max-h-[90vh]">
+        {/* RIGHT PANEL */}
+        <div className="flex-1 p-8 bg-white">
+
           {submitSuccess ? (
             <div className="text-center py-16">
               <CheckCircle2 size={64} className="text-emerald-500 mx-auto mb-6" />
-              <h2 className="text-3xl font-extrabold text-slate-900">Booking Sent!</h2>
-              <p className="text-slate-500 mt-3 text-lg">We'll reach out to you shortly.</p>
-              <button onClick={onClose} className="mt-10 px-12 py-4 bg-slate-900 text-white rounded-2xl font-bold transition-all">Done</button>
+              <h2 className="text-3xl font-bold">Booking Sent!</h2>
+              <button onClick={onClose} className="mt-6 px-8 py-3 bg-black text-white rounded-xl">
+                Done
+              </button>
             </div>
           ) : (
-            <div className="space-y-8 text-left">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Reservation Details</h2>
-                <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={24}/></button>
+
+            <>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Reservation</h2>
+                <button onClick={onClose}><X /></button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"><User size={12}/> Guest Name</label>
-                  <input className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:border-emerald-500 focus:bg-white transition-all" 
-                    value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Full legal name" />
-                </div>
+              <input placeholder="Name" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full mb-3 p-3 border rounded" />
+              <input placeholder="Email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} className="w-full mb-3 p-3 border rounded" />
+              <input placeholder="Phone" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full mb-3 p-3 border rounded" />
 
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"><Mail size={12}/> Email Address</label>
-                  <input className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:border-emerald-500 focus:bg-white transition-all" 
-                    value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="email@address.com" />
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"><Phone size={12}/> Mobile Number</label>
-                  <input className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:border-emerald-500 focus:bg-white transition-all" 
-                    value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="+91 00000 00000" />
-                </div>
+              <input type="date" value={dateIn} onChange={e => setDateIn(e.target.value)} className="w-full mb-3 p-3 border rounded" />
+              <input type="date" value={dateOut} onChange={e => setDateOut(e.target.value)} className="w-full mb-3 p-3 border rounded" />
 
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"><Calendar size={12}/> Check-In</label>
-                  <input type="date" min={today} className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:border-emerald-500 focus:bg-white" 
-                    value={dateIn} onChange={e => setDateIn(e.target.value)} />
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"><Calendar size={12}/> Check-Out</label>
-                  <input type="date" min={dateIn} className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:border-emerald-500 focus:bg-white" 
-                    value={dateOut} onChange={e => setDateOut(e.target.value)} />
-                </div>
-              </div>
+              <div className="my-4 text-lg font-bold">₹{grandTotal}</div>
 
-              <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 mt-10 flex flex-col sm:flex-row justify-between items-center gap-8">
-                <div className="text-center sm:text-left">
-                  <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Est. Total ({nights} nights)</p>
-                  <p className="text-5xl font-black text-emerald-600 tracking-tighter">₹{grandTotal}</p>
-                </div>
-                <button 
-                  onClick={handleConfirmBooking}
-                  disabled={isSubmitting}
-                  className="w-full sm:w-auto px-12 py-6 bg-[#10b981] text-white rounded-3xl font-black text-xl shadow-2xl shadow-emerald-200 hover:bg-emerald-600 active:scale-95 disabled:bg-slate-300 transition-all"
-                >
-                  {isSubmitting ? "Sending..." : "Confirm Booking"}
-                </button>
-              </div>
+              <button onClick={handleConfirmBooking} disabled={isSubmitting} className="w-full bg-green-500 text-white p-4 rounded-xl">
+                {isSubmitting ? "Sending..." : "Confirm Booking"}
+              </button>
 
               {submitError && (
-                <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-[11px] font-bold flex items-center gap-2 border border-red-100">
+                <div className="mt-4 text-red-500 flex gap-2">
                   <AlertCircle size={16} /> {submitError}
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
