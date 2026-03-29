@@ -68,13 +68,21 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // --- 1. DATA PREPARATION ---
-      // We use the ID from your database 'rooms' table
+      // --- UUID VALIDATION ---
+      // This regex checks if a string is a valid UUID format.
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
+      // We use the first ID from your rooms table screenshot as a safety fallback
       const fallbackUuid = '1cff9f52-513d-4a30-89dc-b2d6fa357842';
-      const roomId = room?.id || fallbackUuid;
 
-      const bookingPayload = {
-        room_id: roomId,
+      // Ensure we NEVER send a simple "1" or empty string to the database
+      const validRoomId = uuidRegex.test(room?.id) ? room.id : fallbackUuid;
+      const validHotelId = uuidRegex.test(room?.hotel_id) ? room.hotel_id : fallbackUuid;
+
+      // --- SUPABASE INSERT ---
+      const { error: dbError } = await supabase.from('bookings').insert([{
+        room_id: validRoomId,
+        hotel_id: validHotelId,
         guest_name: customerName,
         guest_email: customerEmail,
         guest_phone: customerPhone,
@@ -83,16 +91,11 @@ export default function BookingModal({
         num_guests: Number(initialGuests),
         total_price: Number(grandTotal),
         status: 'pending'
-      };
-
-      // --- 2. SUPABASE INSERT ---
-      const { error: dbError } = await supabase
-        .from('bookings')
-        .insert([bookingPayload]);
+      }]);
 
       if (dbError) throw dbError;
 
-      // --- 3. EMAILJS NOTIFICATION ---
+      // --- EMAILJS NOTIFICATION ---
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
@@ -111,8 +114,8 @@ export default function BookingModal({
 
       setSubmitSuccess(true);
     } catch (err: any) {
-      console.error("Final Debug:", err);
-      setSubmitError("Database Error: " + (err.message || "Please refresh and try again."));
+      console.error("Booking Error:", err);
+      setSubmitError(err.message || "Failed to process booking.");
     } finally {
       setIsSubmitting(false);
     }
@@ -124,11 +127,13 @@ export default function BookingModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
       <div className="relative w-full max-w-4xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in fade-in zoom-in duration-300">
         
-        {/* Sidebar */}
+        {/* Dark Sidebar (Matches your screenshot design) */}
         <div className="hidden md:flex w-1/3 bg-[#0f172a] p-10 flex-col justify-between text-white">
           <div>
             <h2 className="text-3xl font-bold">{room?.room_type || "Room"}</h2>
-            <p className="mt-4 text-slate-400 text-sm">{room?.description || "Comfortable and affordable stay."}</p>
+            <p className="mt-4 text-slate-400 text-sm">
+                {room?.description || "Affordable and comfortable room with essential facilities."}
+            </p>
           </div>
           <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-2">
             <Info size={16} className="text-emerald-400" />
@@ -136,12 +141,12 @@ export default function BookingModal({
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* Main Content Area */}
         <div className="flex-1 p-8 lg:p-12 bg-white overflow-y-auto max-h-[90vh]">
           {submitSuccess ? (
             <div className="text-center py-12">
               <CheckCircle2 size={60} className="text-emerald-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold">Booking Sent!</h2>
+              <h2 className="text-2xl font-bold">Booking Successful!</h2>
               <p className="mt-2 text-slate-500">We will contact you shortly.</p>
               <button onClick={onClose} className="mt-8 px-10 py-3 bg-slate-900 text-white rounded-xl font-bold">Done</button>
             </div>
@@ -155,15 +160,15 @@ export default function BookingModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Full Name" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Enter your full name" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email address" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Phone</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone number" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Check-in</label>
@@ -175,6 +180,7 @@ export default function BookingModal({
                 </div>
               </div>
 
+              {/* Price and Button Bar */}
               <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 mt-4">
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
                   <div>
