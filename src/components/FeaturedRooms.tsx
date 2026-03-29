@@ -5,24 +5,40 @@ const EMAILJS_SERVICE_ID = "service_12y6xre";
 const EMAILJS_TEMPLATE_ID = "template_mz16rsu";
 const EMAILJS_PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
 
-export default function BookingSection() {
+export default function BookingBar() {
   const today = new Date().toISOString().split("T")[0];
 
-  const [hotel, setHotel] = useState("Blossom");
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [name, setName] = useState("");
-  const [mobileNo, setMobileNo] = useState("");
-  const [email, setEmail] = useState("");
+  // State for form values
+  const [form, setForm] = useState({
+    hotel: "Blossom",
+    checkIn: "",
+    checkOut: "",
+    name: "",
+    mobileNo: "",
+    email: "",
+  });
+
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hotel || !checkIn || !checkOut || !name || !mobileNo || !email) {
-      setMessage("Please fill all fields.");
-      return;
+
+    // Basic validation
+    for (const key in form) {
+      if (!form[key as keyof typeof form]) {
+        setMessage("Please fill all fields.");
+        return;
+      }
     }
+
     setSending(true);
     setMessage("");
 
@@ -31,24 +47,24 @@ export default function BookingSection() {
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
-          hotel,
-          check_in: checkIn,
-          check_out: checkOut,
-          name,
-          mobile_no: mobileNo,
-          email,
+          hotel: form.hotel,
+          check_in: form.checkIn,
+          check_out: form.checkOut,
+          customer_name: form.name,
+          customer_mobile: form.mobileNo,
+          customer_email: form.email,
         },
         EMAILJS_PUBLIC_KEY
       );
-
       setMessage("Booking request sent successfully!");
-      // Optionally reset the form
-      setHotel("Blossom");
-      setCheckIn("");
-      setCheckOut("");
-      setName("");
-      setMobileNo("");
-      setEmail("");
+      setForm({
+        hotel: "Blossom",
+        checkIn: "",
+        checkOut: "",
+        name: "",
+        mobileNo: "",
+        email: "",
+      });
     } catch (error) {
       setMessage("Failed to send booking request. Please try again.");
       console.error(error);
@@ -58,100 +74,85 @@ export default function BookingSection() {
   };
 
   return (
-    <section className="w-full bg-transparent py-6 px-4 font-sans">
+    <section className="px-4 py-4 font-sans bg-transparent max-w-full">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-wrap gap-3 items-center justify-center max-w-full overflow-x-auto bg-transparent"
+        className="flex flex-nowrap items-center gap-3 max-w-full overflow-x-auto"
       >
-        {/* Hotel */}
-        <label className="flex flex-col text-black font-medium text-xs min-w-[120px]">
-          Hotel
-          <select
-            value={hotel}
-            onChange={(e) => setHotel(e.target.value)}
-            className="mt-1 p-3 text-black border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            required
-          >
-            <option>Blossom</option>
-            <option>Another Hotel</option>
-          </select>
-        </label>
+        <select
+          name="hotel"
+          aria-label="Hotel"
+          value={form.hotel}
+          onChange={handleChange}
+          className="border border-black rounded px-4 py-2 min-w-[140px]"
+          required
+        >
+          <option>Blossom</option>
+          <option>Hotel Green Garden</option>
+        </select>
 
-        {/* Check In */}
-        <label className="flex flex-col text-black font-medium text-xs min-w-[140px]">
-          Check In
-          <input
-            type="date"
-            value={checkIn}
-            onChange={(e) => setCheckIn(e.target.value)}
-            min={today}
-            className="mt-1 p-3 border border-gray-400 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            required
-          />
-        </label>
+        <input
+          type="date"
+          name="checkIn"
+          aria-label="Check In"
+          placeholder="dd-mm-yyyy"
+          value={form.checkIn}
+          onChange={handleChange}
+          className="border border-black rounded px-4 py-2 min-w-[140px]"
+          min={today}
+          required
+        />
 
-        {/* Check Out */}
-        <label className="flex flex-col text-black font-medium text-xs min-w-[140px]">
-          Check Out
-          <input
-            type="date"
-            value={checkOut}
-            onChange={(e) => setCheckOut(e.target.value)}
-            min={checkIn || today}
-            className="mt-1 p-3 border border-gray-400 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            required
-          />
-        </label>
+        <input
+          type="date"
+          name="checkOut"
+          aria-label="Check Out"
+          placeholder="dd-mm-yyyy"
+          value={form.checkOut}
+          onChange={handleChange}
+          className="border border-black rounded px-4 py-2 min-w-[140px]"
+          min={form.checkIn || today}
+          required
+        />
 
-        {/* Name */}
-        <label className="flex flex-col text-black font-medium text-xs min-w-[180px]">
-          Name
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={200}
-            placeholder="Your full name"
-            className="mt-1 p-3 border border-gray-400 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            required
-          />
-        </label>
+        <input
+          type="text"
+          name="name"
+          aria-label="Name"
+          placeholder="Name"
+          value={form.name}
+          onChange={handleChange}
+          className="border border-black rounded px-4 py-2 min-w-[160px]"
+          required
+        />
 
-        {/* Mobile No. */}
-        <label className="flex flex-col text-black font-medium text-xs min-w-[140px]">
-          Mobile No.
-          <input
-            type="tel"
-            value={mobileNo}
-            onChange={(e) => setMobileNo(e.target.value)}
-            maxLength={20}
-            placeholder="Mobile number"
-            className="mt-1 p-3 border border-gray-400 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            required
-          />
-        </label>
+        <input
+          type="tel"
+          name="mobileNo"
+          aria-label="Mobile No."
+          placeholder="Mobile No."
+          value={form.mobileNo}
+          onChange={handleChange}
+          className="border border-black rounded px-4 py-2 min-w-[140px]"
+          required
+        />
 
-        {/* Email */}
-        <label className="flex flex-col text-black font-medium text-xs min-w-[200px]">
-          E-mail
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            maxLength={200}
-            placeholder="Your email address"
-            className="mt-1 p-3 border border-gray-400 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            required
-          />
-        </label>
+        <input
+          type="email"
+          name="email"
+          aria-label="Email"
+          placeholder="E-mail"
+          value={form.email}
+          onChange={handleChange}
+          className="border border-black rounded px-4 py-2 min-w-[180px]"
+          required
+        />
 
         <button
           type="submit"
           disabled={sending}
-          className={`min-w-[140px] py-3 px-6 rounded-lg font-semibold border-2 border-red-600 text-red-600 transition ${
-            sending
-              ? "bg-red-600 text-white cursor-not-allowed opacity-50"
-              : "hover:bg-red-600 hover:text-white"
+          className={`ml-3 border border-red-600 text-red-600 font-bold rounded px-6 py-3 transition ${
+            sending ? "bg-red-600 text-white cursor-not-allowed opacity-50" : "hover:bg-red-600 hover:text-white"
           }`}
         >
           {sending ? "Sending..." : "Book Now"}
@@ -161,9 +162,7 @@ export default function BookingSection() {
       {message && (
         <p
           className={`mt-4 text-center text-sm font-semibold ${
-            message.includes("successfully")
-              ? "text-green-600"
-              : "text-red-600"
+            message.includes("successfully") ? "text-green-600" : "text-red-600"
           }`}
         >
           {message}
@@ -173,10 +172,7 @@ export default function BookingSection() {
       {/* Contact Info Bar */}
       <div className="mt-8 w-full bg-[#473605] text-white text-center py-3 text-sm font-semibold tracking-wide rounded-md select-none">
         Phone No. +91 80191600498 | Reservation Number | Email:{" "}
-        <a
-          href="mailto:reservations@blossomhotels.in"
-          className="underline hover:text-gray-200"
-        >
+        <a href="mailto:reservations@blossomhotels.in" className="underline hover:text-gray-200">
           reservations@blossomhotels.in
         </a>
       </div>
@@ -199,16 +195,16 @@ export default function BookingSection() {
           </div>
 
           <div className="flex space-x-16 ml-10 text-base font-semibold">
-            <BenefitIcon
+            <IconWithText
               title="ROOM UPGRADE"
               path1="M3 10h2v4H3v-4zm4 0h2v4H7v-4zm4 0h2v4h-2v-4zm4 0h2v4h-2v-4zM21 10h-2v4h2v-4z"
               path2="M17 10V5a2 2 0 00-2-2H9a2 2 0 00-2 2v5h10z"
             />
-            <BenefitIcon
+            <IconWithText
               title="EARLY CHECK-IN"
               path1="M8 7V3m8 4V3m-4 18v-4m-2-5h4m-6 7a9 9 0 11-2-7.89M12 8v4l2 2"
             />
-            <BenefitIcon
+            <IconWithText
               title="LATE CHECK-OUT"
               path1="M12 4v2m0 12v2m8-10h-3M7 8H4m16 4h-3M7 16H4m14.364-1.636l-2.121-2.12M7.757 7.757L5.636 5.636m0 10.728l2.121-2.12M16.243 16.243l2.121 2.122"
             />
@@ -219,7 +215,7 @@ export default function BookingSection() {
   );
 }
 
-function BenefitIcon({
+function IconWithText({
   title,
   path1,
   path2,
@@ -229,10 +225,10 @@ function BenefitIcon({
   path2?: string;
 }) {
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center space-x-2 whitespace-nowrap">
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        className="h-6 w-6"
+        className="h-6 w-6 flex-shrink-0"
         fill="currentColor"
         viewBox="0 0 24 24"
       >
