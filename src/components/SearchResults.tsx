@@ -2,10 +2,10 @@ import { Calendar, Users, ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { useState } from 'react';
 
 interface BookingFormProps {
-  onSearch: (filters: { checkIn: string; checkOut: string; guests: number }) => void;
+  onSearch?: (filters: { checkIn: string; checkOut: string; guests: number }) => void;
 }
 
-export function BookingForm({ onSearch }: BookingFormProps) {
+export default function BookingForm({ onSearch }: BookingFormProps) {
   const today = new Date().toISOString().split('T')[0];
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
@@ -16,65 +16,73 @@ export function BookingForm({ onSearch }: BookingFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch({ checkIn, checkOut, guests });
+    if (onSearch) onSearch({ checkIn, checkOut, guests });
   };
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white/20 backdrop-blur-md rounded-xl shadow-lg max-w-4xl mx-auto p-6 flex flex-col md:flex-row items-center gap-6"
+      className="max-w-5xl mx-auto flex flex-wrap gap-6 items-center justify-center py-10 px-5
+       bg-white/30 backdrop-blur-md rounded-3xl shadow-lg"
+      style={{ minWidth: '320px' }}
     >
-      {/* Check-In */}
-      <div className="flex flex-col text-white text-sm font-semibold uppercase">
-        <label className="mb-1 flex items-center gap-1">
-          <Calendar size={16} /> Check-In
+      {/* Check In */}
+      <div className="flex flex-col w-40">
+        <label className="flex items-center gap-2 text-white font-semibold tracking-wide text-xs uppercase mb-2">
+          <Calendar size={16} /> CHECK-IN
         </label>
         <input
           type="date"
           min={today}
           value={checkIn}
           onChange={(e) => setCheckIn(e.target.value)}
-          className="bg-white bg-opacity-30 focus:bg-opacity-50 rounded-md px-4 py-2 text-black shadow-md"
+          placeholder="-- --"
+          className="bg-white bg-opacity-30 text-black text-lg font-semibold rounded-xl px-5 py-3
+            placeholder-black/50 focus:bg-opacity-50 focus:outline-none transition"
           required
         />
       </div>
 
-      {/* Check-Out */}
-      <div className="flex flex-col text-white text-sm font-semibold uppercase">
-        <label className="mb-1 flex items-center gap-1">
-          <Calendar size={16} /> Check-Out
+      {/* Check Out */}
+      <div className="flex flex-col w-40">
+        <label className="flex items-center gap-2 text-white font-semibold tracking-wide text-xs uppercase mb-2">
+          <Calendar size={16} /> CHECK-OUT
         </label>
         <input
           type="date"
           min={checkIn || today}
           value={checkOut}
           onChange={(e) => setCheckOut(e.target.value)}
-          className="bg-white bg-opacity-30 focus:bg-opacity-50 rounded-md px-4 py-2 text-black shadow-md"
+          placeholder="-- --"
+          className="bg-white bg-opacity-30 text-black text-lg font-semibold rounded-xl px-5 py-3
+            placeholder-black/50 focus:bg-opacity-50 focus:outline-none transition"
           required
         />
       </div>
 
       {/* Guests */}
-      <div className="flex flex-col text-white text-sm font-semibold uppercase">
-        <label className="mb-1 flex items-center gap-1">
-          <Users size={16} /> Guests
+      <div className="flex flex-col w-40">
+        <label className="flex items-center gap-2 text-white font-semibold tracking-wide text-xs uppercase mb-2">
+          <Users size={16} /> GUESTS
         </label>
-        <div className="flex items-center bg-white bg-opacity-30 focus-within:bg-opacity-50 rounded-md shadow-md px-3 py-2 max-w-[120px]">
+        <div className="relative bg-white bg-opacity-30 rounded-xl flex items-center justify-center text-black font-semibold text-lg px-5 py-3">
           <button
             type="button"
             onClick={decrementGuests}
-            disabled={guests <= 1}
-            className="text-white disabled:opacity-50"
+            disabled={guests === 1}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 disabled:opacity-50"
+            aria-label="Decrease Guests"
           >
-            <ChevronDown size={18} />
+            <ChevronDown size={20} />
           </button>
-          <span className="mx-4 text-black font-semibold select-none">{guests}</span>
+          <span className="mx-auto select-none">{guests} Guest{guests > 1 ? 's' : ''}</span>
           <button
             type="button"
             onClick={incrementGuests}
-            className="text-white"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600"
+            aria-label="Increase Guests"
           >
-            <ChevronUp size={18} />
+            <ChevronUp size={20} />
           </button>
         </div>
       </div>
@@ -82,10 +90,11 @@ export function BookingForm({ onSearch }: BookingFormProps) {
       {/* Search Button */}
       <button
         type="submit"
-        className="bg-emerald-600 hover:bg-emerald-700 transition-colors text-white font-bold uppercase rounded-lg py-3 px-8 shadow-md flex items-center gap-2"
+        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase text-lg 
+          rounded-xl py-3 px-10 flex items-center gap-3 shadow-lg transition"
       >
-        <Search size={18} />
-        Search Rooms
+        <Search size={22} />
+        SEARCH ROOMS
       </button>
     </form>
   );
