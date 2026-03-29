@@ -71,12 +71,15 @@ export default function BookingModal({
           hotel_id: 'GREEN_GARDEN_RESORT',
           room_id: '1cff9f52-513d-4a30-89dc-b2d6fa357842'
         }
-      ]);
+      ])
+      .select(); // 👈 important
     
     if (error) {
-      console.error('Booking error:', error);
+      console.error(error);
       throw error;
     }
+
+console.log(data);
     
     console.log('Booking success:', data);
 
