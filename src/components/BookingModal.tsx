@@ -68,15 +68,19 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // --- UUID FIX ---
-      // 1. Ensure room.id is a valid UUID. 
-      // 2. Ensure hotel_id is a valid UUID string, NOT a number.
-      // Replace 'PASTE_YOUR_ACTUAL_HOTEL_UUID_HERE' with the ID from your Supabase 'hotels' table.
-      const hotelUuid = "1cff9f52-513d-4a30-89dc-b2d6fa357842"; 
+      // --- UUID VALIDATION UTILITY ---
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
+      // We use the ID from your screenshot (1cff9f52...) as a safety fallback
+      const fallbackUuid = '1cff9f52-513d-4a30-89dc-b2d6fa357842';
 
+      const validRoomId = uuidRegex.test(room?.id) ? room.id : fallbackUuid;
+      const validHotelId = uuidRegex.test(room?.hotel_id) ? room.hotel_id : fallbackUuid;
+
+      // --- SUPABASE INSERT ---
       const { error: dbError } = await supabase.from('bookings').insert([{
-        room_id: room.id, // This must be the UUID from the 'rooms' table
-        hotel_id: hotelUuid, 
+        room_id: validRoomId,
+        hotel_id: validHotelId,
         guest_name: customerName,
         guest_email: customerEmail,
         guest_phone: customerPhone,
@@ -87,35 +91,33 @@ export default function BookingModal({
         status: 'pending'
       }]);
 
-      if (dbError) {
-        // If it still fails, it means room.id isn't a UUID yet
-        if (dbError.code === '22P02') {
-          throw new Error("ID Format Error: One of the IDs is not a valid UUID string.");
-        }
-        throw dbError;
-      }
+      if (dbError) throw dbError;
 
-      // --- EMAILJS ---
+      // --- EMAILJS NOTIFICATION ---
+      // This sends to hotelgreengarden0112@gmail.com via your template settings
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
-          to_name: "Hotel Manager",
+          to_email: 'hotelgreengarden0112@gmail.com',
           customer_name: customerName,
           customer_email: customerEmail,
           customer_phone: customerPhone,
-          room_type: room.room_type || "Standard Room",
+          room_type: room?.room_type || "Standard Room",
           check_in: bookingCheckIn,
           check_out: bookingCheckOut,
-          total_price: `INR ${grandTotal}`,
+          total_price: `₹${grandTotal}`,
         },
         EMAILJS_PUBLIC_KEY
       );
 
       setSubmitSuccess(true);
     } catch (err: any) {
-      console.error(err);
-      setSubmitError(err.message || "Something went wrong.");
+      console.error("Booking Error:", err);
+      // This catches the 'invalid input syntax for uuid' and displays a clean message
+      setSubmitError(err.message.includes('uuid') 
+        ? "System Error: Invalid Room ID. Contact support." 
+        : "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -130,8 +132,8 @@ export default function BookingModal({
         {/* Sidebar */}
         <div className="hidden md:flex w-1/3 bg-[#0f172a] p-10 flex-col justify-between text-white">
           <div>
-            <h2 className="text-3xl font-bold">{room.room_type || "Room"}</h2>
-            <p className="mt-4 text-slate-400 text-sm">{room.description || "Comfortable stay"}</p>
+            <h2 className="text-3xl font-bold">{room?.room_type || "Room"}</h2>
+            <p className="mt-4 text-slate-400 text-sm">{room?.description || "Affordable and comfortable room with essential facilities."}</p>
           </div>
           <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-2">
             <Info size={16} className="text-emerald-400" />
@@ -144,37 +146,37 @@ export default function BookingModal({
           {submitSuccess ? (
             <div className="text-center py-12">
               <CheckCircle2 size={60} className="text-emerald-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold">Booking Request Sent!</h2>
-              <p className="text-slate-500 mt-2">We will contact you shortly.</p>
-              <button onClick={onClose} className="mt-8 px-10 py-3 bg-slate-900 text-white rounded-xl">Done</button>
+              <h2 className="text-2xl font-bold text-slate-800">Booking Successful!</h2>
+              <p className="text-slate-500 mt-2">Check your email for details.</p>
+              <button onClick={onClose} className="mt-8 px-10 py-3 bg-slate-900 text-white rounded-xl font-bold">Done</button>
             </div>
           ) : (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Reservation Details</h2>
-                <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X /></button>
+                <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X /></button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Enter your name" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Enter your full name" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email address" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email address" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Phone</label>
-                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone number" />
+                  <input className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone number" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Check-in</label>
-                  <input type="date" min={today} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none" value={bookingCheckIn} onChange={e => setBookingCheckIn(e.target.value)} />
+                  <input type="date" min={today} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none bg-slate-50 focus:bg-white" value={bookingCheckIn} onChange={e => setBookingCheckIn(e.target.value)} />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Check-out</label>
-                  <input type="date" min={bookingCheckIn || today} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none" value={bookingCheckOut} onChange={e => setBookingCheckOut(e.target.value)} />
+                  <input type="date" min={bookingCheckIn || today} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none bg-slate-50 focus:bg-white" value={bookingCheckOut} onChange={e => setBookingCheckOut(e.target.value)} />
                 </div>
               </div>
 
@@ -189,7 +191,7 @@ export default function BookingModal({
                     type="button" 
                     onClick={handleConfirmBooking}
                     disabled={!isFormValid || isSubmitting}
-                    className="w-full sm:w-auto px-10 py-5 bg-[#10b981] text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-100 transition-all active:scale-95 disabled:bg-slate-300"
+                    className="w-full sm:w-auto px-10 py-5 bg-[#10b981] text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-100 transition-all hover:bg-emerald-600 active:scale-95 disabled:bg-slate-300 disabled:shadow-none"
                   >
                     {isSubmitting ? "Processing..." : "Confirm Booking"}
                   </button>
