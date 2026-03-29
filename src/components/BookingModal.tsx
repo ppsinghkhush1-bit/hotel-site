@@ -2,16 +2,15 @@ import React, { useState, useEffect } from "react";
 import emailjs from "@emailjs/browser";
 
 const EMAILJS_SERVICE_ID = "service_12y6xre";
-const EMAILJS_TEMPLATE_ID = "template_mz16rsu";
+const EMAILJS_TEMPLATE_ID = "template_1scrkoq";
 const EMAILJS_PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
 
 interface BookingFormProps {
-  roomName: string;           // e.g. "Luxury Room"
-  basePrice: number;          // e.g. 2500
-  onBookingSuccess?: () => void; // optional callback after success
+  basePrice: number;           // Room price per night (number) passed as prop
+  roomName?: string;           // optional room name, shown as label (can be hidden)
 }
 
-export default function BookingForm({ roomName, basePrice, onBookingSuccess }: BookingFormProps) {
+export default function BookingForm({ basePrice, roomName }: BookingFormProps) {
   const today = new Date().toISOString().split("T")[0];
 
   const [checkIn, setCheckIn] = useState("");
@@ -24,24 +23,27 @@ export default function BookingForm({ roomName, basePrice, onBookingSuccess }: B
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Breakfast cost fixed at 200 (adjust as needed)
-  const breakfastCost = 200;
+  // Validate that basePrice is a valid number, fallback 0
+  const validBasePrice = typeof basePrice === "number" && !isNaN(basePrice) ? basePrice : 0;
+  const breakfastPrice = addBreakfast ? 200 : 0;
 
-  // Calculate total price live
-  const totalPrice = basePrice + (addBreakfast ? breakfastCost : 0);
+  // Calculate nights to avoid NaN
+  const getNights = () => {
+    if (!checkIn || !checkOut) return 1;
+    const d1 = new Date(checkIn);
+    const d2 = new Date(checkOut);
+    const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24));
+    return diff > 0 ? diff : 1;
+  };
 
-  // Basic date validation for check-in / check-out
-  const isValidDates = checkIn && checkOut && new Date(checkOut) > new Date(checkIn);
+  const nights = getNights();
+  const totalPrice = (validBasePrice + breakfastPrice) * nights;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isValidDates) {
-      setMessage("Please select valid Check-In and Check-Out dates.");
-      return;
-    }
-    if (!name || !mobileNo || !email) {
-      setMessage("Please fill all required fields.");
+    if (!checkIn || !checkOut || !name || !mobileNo || !email) {
+      setMessage("Please fill all fields.");
       return;
     }
 
@@ -53,8 +55,8 @@ export default function BookingForm({ roomName, basePrice, onBookingSuccess }: B
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
-          room_type: roomName,
-          base_price: basePrice,
+          room_name: roomName || '',      // Optional, or remove as you prefer
+          base_price: validBasePrice,
           add_breakfast: addBreakfast ? "Yes" : "No",
           total_price: `₹${totalPrice}`,
           check_in: checkIn,
@@ -67,35 +69,27 @@ export default function BookingForm({ roomName, basePrice, onBookingSuccess }: B
       );
 
       setMessage("Booking request sent successfully!");
-      // Optional: run callback after success
-      if (onBookingSuccess) onBookingSuccess();
+      // Optionally clear form fields here
 
-      // Reset form
-      setCheckIn("");
-      setCheckOut("");
-      setName("");
-      setMobileNo("");
-      setEmail("");
-      setAddBreakfast(false);
-    } catch (error) {
-      console.error(error);
-      setMessage("Failed to send booking request. Please try again later.");
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to send booking request. Please try again.");
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <section className="max-w-full px-6 py-6 bg-transparent font-sans">
+    <section className="max-w-full px-6 py-6 font-sans">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-nowrap items-center gap-4 max-w-full overflow-x-auto"
+        className="flex flex-nowrap items-center gap-3 max-w-full overflow-x-auto"
       >
-        {/* Room Type - show as label, removed hotel select */}
-        <div className="flex flex-col text-black text-xs font-semibold min-w-[140px]">
+        {/* Optional room name label - remove below block if you don't want to show */}
+        {/* <div className="flex flex-col text-black text-xs font-semibold min-w-[140px]">
           <label>Room</label>
           <div className="p-2 border border-black rounded-md bg-gray-100">{roomName}</div>
-        </div>
+        </div> */}
 
         {/* Check In */}
         <div className="flex flex-col min-w-[140px]">
@@ -105,6 +99,7 @@ export default function BookingForm({ roomName, basePrice, onBookingSuccess }: B
             value={checkIn}
             onChange={(e) => setCheckIn(e.target.value)}
             min={today}
+            placeholder="dd-mm-yyyy"
             className="border border-black rounded-md p-2 text-black"
             required
           />
@@ -116,8 +111,9 @@ export default function BookingForm({ roomName, basePrice, onBookingSuccess }: B
           <input
             type="date"
             value={checkOut}
-            min={checkIn || today}
             onChange={(e) => setCheckOut(e.target.value)}
+            min={checkIn || today}
+            placeholder="dd-mm-yyyy"
             className="border border-black rounded-md p-2 text-black"
             required
           />
@@ -156,25 +152,25 @@ export default function BookingForm({ roomName, basePrice, onBookingSuccess }: B
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="example@mail.com"
+            placeholder="you@example.com"
             className="border border-black rounded-md p-2 text-black"
             required
           />
         </div>
 
-        {/* Add Breakfast Checkbox */}
+        {/* Add Breakfast */}
         <label className="flex items-center min-w-[130px] gap-2 text-black text-xs font-semibold">
           <input
             type="checkbox"
             checked={addBreakfast}
             onChange={(e) => setAddBreakfast(e.target.checked)}
           />
-          Add Breakfast ₹200
+          + Add Breakfast ₹200
         </label>
 
-        {/* Total Price */}
-        <div className="min-w-[140px] text-black font-bold text-lg flex items-center justify-center">
-          ₹{totalPrice}
+        {/* Total Price Display */}
+        <div className="min-w-[140px] font-bold text-lg flex items-center justify-center text-black">
+          ₹{totalPrice.toLocaleString("en-IN")}
         </div>
 
         {/* Book Now Button */}
@@ -187,20 +183,9 @@ export default function BookingForm({ roomName, basePrice, onBookingSuccess }: B
               : "text-red-600 hover:bg-red-600 hover:text-white"
           }`}
         >
-          {sending ? "Sending..." : "Book Now"}
+          {sending ? "Booking..." : "Book Now"}
         </button>
       </form>
-
-      {/* Message */}
-      {message && (
-        <p
-          className={`mt-3 text-center text-sm font-semibold ${
-            message.toLowerCase().includes("success") ? "text-green-600" : "text-red-600"
-          }`}
-        >
-          {message}
-        </p>
-      )}
     </section>
   );
 }
