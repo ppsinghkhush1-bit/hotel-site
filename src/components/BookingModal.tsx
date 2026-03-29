@@ -57,7 +57,7 @@ export default function BookingModal({
 
     // Remove hotel_id completely
     const { error: dbError } = await supabase
-      .from('booking') // Updated from 'bookings' to 'booking'
+      .from('bookings') // Use the plural 'bookings'
       .insert([
         {
           guest_name: customerName,
@@ -68,10 +68,8 @@ export default function BookingModal({
           num_guests: Number(guests),
           total_price: Number(grandTotal),
           status: 'pending',
-          // Send the text string safely now
           hotel_id: "GREEN_GARDEN_RESORT", 
-          // Ensure this is a valid UUID from your 'rooms' table
-          room_id: room?.id || "1cff9f52-513d-4a30-89dc-b2d6fa357842" 
+          room_id: "1cff9f52-513d-4a30-89dc-b2d6fa357842" 
         }
       ]);
 
