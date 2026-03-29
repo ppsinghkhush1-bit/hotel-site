@@ -1,19 +1,21 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import emailjs from "@emailjs/browser";
 
 const SERVICE_ID = "service_12y6xre";
 const TEMPLATE_ID = "template_1scrkoq";
 const PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
 
-interface BookingBarProps {
-  roomName: string;
-  basePrice: number;
-}
+const ROOMS = [
+  { name: "Standard Room", price: 1500, available: true },
+  { name: "Deluxe Room", price: 1700, available: false },
+  { name: "Luxury Room", price: 2500, available: false },
+];
 
-export default function BookingBar({ roomName, basePrice }: BookingBarProps) {
+export default function BookingForm() {
   const today = new Date().toISOString().split("T")[0];
   const BREAKFAST_PRICE = 200;
 
+  const [selectedRoom, setSelectedRoom] = useState(ROOMS[0]);
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [name, setName] = useState("");
@@ -23,64 +25,36 @@ export default function BookingBar({ roomName, basePrice }: BookingBarProps) {
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Reset form when room changes
-  useEffect(() => {
-    setCheckIn("");
-    setCheckOut("");
-    setName("");
-    setMobileNo("");
-    setEmail("");
-    setAddBreakfast(false);
-    setMessage("");
-  }, [roomName, basePrice]);
-
-  // Calculate nights difference, minimum 1
   const nights = useMemo(() => {
     if (!checkIn || !checkOut) return 1;
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    const diffMs = end.getTime() - start.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 1;
+    const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : 1;
   }, [checkIn, checkOut]);
 
-  // Calculate total price live
   const totalPrice = useMemo(() => {
-    const base = Number(basePrice) || 0;
-    return (base + (addBreakfast ? BREAKFAST_PRICE : 0)) * nights;
-  }, [basePrice, addBreakfast, nights]);
+    const base = selectedRoom.price;
+    const breakfast = addBreakfast ? BREAKFAST_PRICE : 0;
+    return (base + breakfast) * nights;
+  }, [selectedRoom, addBreakfast, nights]);
 
-  // Handle input and checkbox changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    switch (name) {
-      case "checkIn":
-        setCheckIn(value);
-        break;
-      case "checkOut":
-        setCheckOut(value);
-        break;
-      case "name":
-        setName(value);
-        break;
-      case "mobileNo":
-        setMobileNo(value);
-        break;
-      case "email":
-        setEmail(value);
-        break;
-      case "addBreakfast":
-        setAddBreakfast(checked);
-        break;
+  const handleRoomChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const roomName = e.target.value;
+    const found = ROOMS.find((r) => r.name === roomName);
+    if (found) {
+      setSelectedRoom(found);
     }
   };
 
-  // Submit handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!checkIn || !checkOut || !name || !mobileNo || !email) {
-      setMessage("Please fill all fields.");
+      setMessage("Please fill all the fields.");
+      return;
+    }
+    if (!selectedRoom.available) {
+      setMessage("Selected room is not available.");
       return;
     }
 
@@ -92,10 +66,10 @@ export default function BookingBar({ roomName, basePrice }: BookingBarProps) {
         SERVICE_ID,
         TEMPLATE_ID,
         {
-          room_type: roomName,
-          base_price: basePrice,
+          room_type: selectedRoom.name,
+          base_price: selectedRoom.price,
           add_breakfast: addBreakfast ? "Yes" : "No",
-          total_price: totalPrice.toString(), // Send number only
+          total_price: totalPrice.toString(),
           check_in: checkIn,
           check_out: checkOut,
           customer_name: name,
@@ -105,112 +79,95 @@ export default function BookingBar({ roomName, basePrice }: BookingBarProps) {
         PUBLIC_KEY
       );
       setMessage("Booking request sent successfully!");
-      // Reset
       setCheckIn("");
       setCheckOut("");
       setName("");
       setMobileNo("");
       setEmail("");
       setAddBreakfast(false);
+      setSelectedRoom(ROOMS[0]);
     } catch (err) {
+      setMessage("Failed to send booking request. Please try again.");
       console.error(err);
-      setMessage("Failed to send request. Please try again later.");
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <section className="max-w-full px-6 py-6 bg-transparent font-sans">
-      <form onSubmit={handleSubmit} className="flex flex-nowrap gap-3 max-w-full overflow-x-auto items-center">
-        <div className="min-w-[160px] font-semibold truncate text-black whitespace-nowrap">{roomName}</div>
+    <section className="max-w-full px-6 py-6 font-sans bg-transparent">
+      <form onSubmit={handleSubmit} className="flex flex-nowrap items-center gap-3 max-w-full overflow-x-auto">
+        <select
+          value={selectedRoom.name}
+          onChange={handleRoomChange}
+          className="border border-black rounded px-4 py-2 min-w-[160px]"
+          aria-label="Room"
+          required
+        >
+          {ROOMS.map(({ name, available }) => (
+            <option key={name} value={name} disabled={!available}>
+              {name} {available ? "" : "(Not Available)"}
+            </option>
+          ))}
+        </select>
 
-        <div className="flex flex-col min-w-[140px]">
-          <label htmlFor="checkIn" className="text-xs font-bold uppercase mb-1 text-black">
-            Check In
-          </label>
-          <input
-            type="date"
-            id="checkIn"
-            name="checkIn"
-            value={checkIn}
-            min={today}
-            onChange={handleChange}
-            className="border border-gray-400 rounded-md p-2 text-black"
-            required
-          />
-        </div>
+        <input
+          type="date"
+          name="checkIn"
+          value={checkIn}
+          min={today}
+          onChange={(e) => setCheckIn(e.target.value)}
+          className="border border-black rounded px-4 py-2 min-w-[140px]"
+          placeholder="dd-mm-yyyy"
+          required
+        />
 
-        <div className="flex flex-col min-w-[140px]">
-          <label htmlFor="checkOut" className="text-xs font-bold uppercase mb-1 text-black">
-            Check Out
-          </label>
-          <input
-            type="date"
-            id="checkOut"
-            name="checkOut"
-            value={checkOut}
-            min={checkIn || today}
-            onChange={handleChange}
-            className="border border-gray-400 rounded-md p-2 text-black"
-            required
-          />
-        </div>
+        <input
+          type="date"
+          name="checkOut"
+          value={checkOut}
+          min={checkIn || today}
+          onChange={(e) => setCheckOut(e.target.value)}
+          className="border border-black rounded px-4 py-2 min-w-[140px]"
+          placeholder="dd-mm-yyyy"
+          required
+        />
 
-        <div className="flex flex-col min-w-[160px]">
-          <label htmlFor="name" className="text-xs font-bold uppercase mb-1 text-black">
-            Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            placeholder="Full name"
-            value={name}
-            onChange={handleChange}
-            className="border border-gray-400 rounded-md p-2 text-black"
-            required
-          />
-        </div>
+        <input
+          type="text"
+          name="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Name"
+          className="border border-black rounded px-4 py-2 min-w-[160px]"
+          required
+        />
 
-        <div className="flex flex-col min-w-[140px]">
-          <label htmlFor="mobileNo" className="text-xs font-bold uppercase mb-1 text-black">
-            Mobile No.
-          </label>
-          <input
-            type="tel"
-            id="mobileNo"
-            name="mobileNo"
-            placeholder="+91 9000000000"
-            value={mobileNo}
-            onChange={handleChange}
-            className="border border-gray-400 rounded-md p-2 text-black"
-            required
-          />
-        </div>
+        <input
+          type="tel"
+          name="mobileNo"
+          value={mobileNo}
+          onChange={(e) => setMobileNo(e.target.value)}
+          placeholder="Mobile No."
+          className="border border-black rounded px-4 py-2 min-w-[140px]"
+          required
+        />
 
-        <div className="flex flex-col min-w-[180px]">
-          <label htmlFor="email" className="text-xs font-bold uppercase mb-1 text-black">
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={handleChange}
-            className="border border-gray-400 rounded-md p-2 text-black"
-            required
-          />
-        </div>
+        <input
+          type="email"
+          name="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="E-mail"
+          className="border border-black rounded px-4 py-2 min-w-[180px]"
+          required
+        />
 
-        <label className="inline-flex items-center gap-2 min-w-[140px] text-black text-xs font-semibold whitespace-nowrap">
+        <label className="inline-flex items-center min-w-[140px] gap-2 text-black text-xs font-semibold whitespace-nowrap select-none">
           <input
             type="checkbox"
-            name="addBreakfast"
             checked={addBreakfast}
-            onChange={handleChange}
+            onChange={(e) => setAddBreakfast(e.target.checked)}
             className="w-4 h-4"
           />
           Add Breakfast ₹200
@@ -222,26 +179,94 @@ export default function BookingBar({ roomName, basePrice }: BookingBarProps) {
 
         <button
           type="submit"
-          disabled={sending}
-          className={`min-w-[140px] px-6 py-3 rounded border border-red-600 font-bold transition ${
+          disabled={sending || !selectedRoom.available}
+          className={`ml-3 border border-red-600 rounded px-6 py-3 font-bold transition ${
             sending
               ? "bg-red-600 text-white cursor-not-allowed opacity-50"
               : "text-red-600 hover:bg-red-600 hover:text-white"
           }`}
         >
-          {sending ? "Booking..." : "Book Now"}
+          {sending ? "Booking..." : selectedRoom.available ? "Book Now" : "Not Available"}
         </button>
       </form>
 
       {message && (
         <p
-          className={`mt-3 text-center text-sm font-semibold ${
+          className={`mt-4 text-center text-sm font-semibold ${
             message.toLowerCase().includes("success") ? "text-green-600" : "text-red-600"
           }`}
         >
           {message}
         </p>
       )}
+
+      {/* Contact Info Bar */}
+      <div className="mt-8 bg-[#473605] text-white text-center py-3 text-sm font-semibold tracking-wide rounded-md select-none">
+        Phone No. +91 80191600498 | Reservation Number | Email:{" "}
+        <a href="mailto:reservations@blossomhotels.in" className="underline hover:text-gray-200">
+          reservations@blossomhotels.in
+        </a>
+      </div>
+
+      {/* Benefits Banner */}
+      <div className="mt-8 overflow-x-auto">
+        <div
+          className="relative bg-black bg-opacity-90 rounded-lg shadow-lg flex items-center justify-between px-6 py-4 whitespace-nowrap text-white font-bold text-xl max-w-full"
+          style={{
+            clipPath:
+              "polygon(0 0, calc(100% - 30px) 0, 100% 50%, calc(100% - 30px) 100%, 0 100%)",
+          }}
+        >
+          <div>
+            BENEFITS OF DIRECT <span className="underline">BOOKING</span>
+            <br />
+            <span className="text-sm font-normal normal-case mt-1 block">
+              *Subject To Availability
+            </span>
+          </div>
+
+          <div className="flex space-x-12 ml-10 text-base font-semibold items-center">
+            <BenefitIcon
+              title="ROOM UPGRADE"
+              path1="M3 10h2v4H3v-4zm4 0h2v4H7v-4zm4 0h2v4h-2v-4zm4 0h2v4h-2v-4zM21 10h-2v4h2v-4z"
+              path2="M17 10V5a2 2 0 00-2-2H9a2 2 0 00-2 2v5h10z"
+            />
+            <BenefitIcon
+              title="EARLY CHECK-IN"
+              path1="M8 7V3m8 4V3m-4 18v-4m-2-5h4m-6 7a9 9 0 11-2-7.89M12 8v4l2 2"
+            />
+            <BenefitIcon
+              title="LATE CHECK-OUT"
+              path1="M12 4v2m0 12v2m8-10h-3M7 8H4m16 4h-3M7 16H4m14.364-1.636l-2.121-2.12M7.757 7.757L5.636 5.636m0 10.728l2.121-2.12M16.243 16.243l2.121 2.122"
+            />
+          </div>
+        </div>
+      </div>
     </section>
+  );
+}
+
+function BenefitIcon({
+  title,
+  path1,
+  path2,
+}: {
+  title: string;
+  path1: string;
+  path2?: string;
+}) {
+  return (
+    <div className="flex items-center space-x-2 whitespace-nowrap">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-6 w-6 flex-shrink-0"
+        fill="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path d={path1} />
+        {path2 && <path d={path2} />}
+      </svg>
+      <span>{title}</span>
+    </div>
   );
 }
