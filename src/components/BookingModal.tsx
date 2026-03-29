@@ -68,18 +68,16 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // --- UUID VALIDATION ---
-      // This regex checks if a string is a valid UUID format.
+      // --- UUID PROTECTION ---
+      // This ensures we send a real UUID, not a number like "1"
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       
-      // We use the first ID from your rooms table screenshot as a safety fallback
+      // Safety fallback from your existing rooms table
       const fallbackUuid = '1cff9f52-513d-4a30-89dc-b2d6fa357842';
 
-      // Ensure we NEVER send a simple "1" or empty string to the database
       const validRoomId = uuidRegex.test(room?.id) ? room.id : fallbackUuid;
       const validHotelId = uuidRegex.test(room?.hotel_id) ? room.hotel_id : fallbackUuid;
 
-      // --- SUPABASE INSERT ---
       const { error: dbError } = await supabase.from('bookings').insert([{
         room_id: validRoomId,
         hotel_id: validHotelId,
@@ -95,18 +93,13 @@ export default function BookingModal({
 
       if (dbError) throw dbError;
 
-      // --- EMAILJS NOTIFICATION ---
+      // Send Email Notification
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
           to_email: 'hotelgreengarden0112@gmail.com',
           customer_name: customerName,
-          customer_email: customerEmail,
-          customer_phone: customerPhone,
-          room_type: room?.room_type || "Standard Room",
-          check_in: bookingCheckIn,
-          check_out: bookingCheckOut,
           total_price: `₹${grandTotal}`,
         },
         EMAILJS_PUBLIC_KEY
@@ -114,8 +107,8 @@ export default function BookingModal({
 
       setSubmitSuccess(true);
     } catch (err: any) {
-      console.error("Booking Error:", err);
-      setSubmitError(err.message || "Failed to process booking.");
+      console.error("Database Error:", err);
+      setSubmitError(err.message || "Failed to save booking. Check SQL constraints.");
     } finally {
       setIsSubmitting(false);
     }
