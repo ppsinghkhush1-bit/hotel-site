@@ -1,22 +1,20 @@
 import React, { useState } from "react";
 import emailjs from "@emailjs/browser";
 
-const EMAILJS_SERVICE_ID = "service_12y6xre";
-const EMAILJS_TEMPLATE_ID = "template_1scrkoq";
-const EMAILJS_PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
+const SERVICE_ID = 'service_12y6xre';
+const TEMPLATE_ID = 'template_1scrkoq';
+const PUBLIC_KEY = 'bsmrGxOAEmpS7_WtU';
 
-export default function BookingBar() {
-  const today = new Date().toISOString().split("T")[0];
-
+export default function BookingForm() {
+  const today = new Date().toISOString().split('T')[0];
   const [formData, setFormData] = useState({
     hotel: "Blossom",
     checkIn: "",
     checkOut: "",
     name: "",
-    mobileNo: "",
+    mobile: "",
     email: "",
   });
-
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -28,58 +26,60 @@ export default function BookingBar() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Basic validation
     for (const key in formData) {
       if (!formData[key as keyof typeof formData]) {
-        setMessage(`Please fill the ${key} field.`);
+        alert(`Please enter ${key}`);
         return;
       }
     }
-    setMessage("");
+
     setSending(true);
+    setMessage("");
+    console.log("Sending email with data:", formData);
 
     try {
-      console.log("Sending email with data:", formData);
-
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
+      const result = await emailjs.send(
+        SERVICE_ID,
+        TEMPLATE_ID,
         {
           hotel: formData.hotel,
           check_in: formData.checkIn,
           check_out: formData.checkOut,
           customer_name: formData.name,
-          customer_mobile: formData.mobileNo,
+          customer_mobile: formData.mobile,
           customer_email: formData.email,
         },
-        EMAILJS_PUBLIC_KEY
+        PUBLIC_KEY
       );
-
-      setMessage("Booking request sent successfully!");
+      console.log("EmailJS result:", result);
+      alert("Booking request sent successfully!");
+      setMessage("Booking sent; please check email (sometimes spam folder).");
       setFormData({
         hotel: "Blossom",
         checkIn: "",
         checkOut: "",
         name: "",
-        mobileNo: "",
+        mobile: "",
         email: "",
       });
     } catch (error) {
       console.error("EmailJS error:", error);
-      setMessage("Failed to send booking request. Please try again later.");
+      alert("Failed to send booking request, please try again.");
+      setMessage("Failed to send email.");
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <section className="max-w-full px-4 py-4 font-sans">
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 max-w-full overflow-x-auto">
+    <section className="p-4 max-w-full font-sans">
+      <form onSubmit={handleSubmit} className="flex gap-3 flex-wrap items-center">
         <select
           name="hotel"
-          aria-label="Hotel"
-          value={formData.hotel}
           onChange={handleChange}
-          className="border px-3 py-2 rounded w-28 text-black"
+          value={formData.hotel}
+          className="border p-2 rounded text-black min-w-[140px]"
           required
         >
           <option>Blossom</option>
@@ -89,74 +89,59 @@ export default function BookingBar() {
         <input
           type="date"
           name="checkIn"
-          aria-label="Check In"
-          value={formData.checkIn}
-          onChange={handleChange}
-          className="border px-3 py-2 rounded w-36 text-black"
           min={today}
+          onChange={handleChange}
+          value={formData.checkIn}
+          className="border p-2 rounded text-black min-w-[140px]"
           required
         />
-
         <input
           type="date"
           name="checkOut"
-          aria-label="Check Out"
-          value={formData.checkOut}
-          onChange={handleChange}
-          className="border px-3 py-2 rounded w-36 text-black"
           min={formData.checkIn || today}
+          onChange={handleChange}
+          value={formData.checkOut}
+          className="border p-2 rounded text-black min-w-[140px]"
           required
         />
-
         <input
           type="text"
           name="name"
-          aria-label="Name"
           placeholder="Name"
-          value={formData.name}
           onChange={handleChange}
-          className="border px-3 py-2 rounded w-40 text-black"
+          value={formData.name}
+          className="border p-2 rounded text-black min-w-[160px]"
           required
         />
-
         <input
           type="tel"
-          name="mobileNo"
-          aria-label="Mobile No."
-          placeholder="Mobile No."
-          value={formData.mobileNo}
+          name="mobile"
+          placeholder="+91..."
           onChange={handleChange}
-          className="border px-3 py-2 rounded w-36 text-black"
+          value={formData.mobile}
+          className="border p-2 rounded text-black min-w-[140px]"
           required
         />
-
         <input
           type="email"
           name="email"
-          aria-label="E-mail"
-          placeholder="E-mail"
-          value={formData.email}
+          placeholder="your@email.com"
           onChange={handleChange}
-          className="border px-3 py-2 rounded w-44 text-black"
+          value={formData.email}
+          className="border p-2 rounded text-black min-w-[180px]"
           required
         />
-
         <button
           type="submit"
           disabled={sending}
-          className={`border border-red-600 px-6 py-2 font-semibold rounded text-red-600 ${
-            sending ? "opacity-60 cursor-not-allowed bg-red-600 text-white" : "hover:bg-red-600 hover:text-white"
-          } transition`}
+          className={`border border-red-600 p-3 rounded font-semibold min-w-[130px] transition ${
+            sending ? "opacity-50 cursor-not-allowed bg-red-600 text-white" : "text-red-600 hover:bg-red-600 hover:text-white"
+          }`}
         >
           {sending ? "Sending..." : "Book Now"}
         </button>
       </form>
-
-      {message && (
-        <p className={`mt-4 text-center font-semibold ${message.includes("successfully") ? "text-green-600" : "text-red-600"}`}>
-          {message}
-        </p>
-      )}
+      {message && <p className="mt-3 text-center text-sm font-semibold">{message}</p>}
     </section>
   );
 }
