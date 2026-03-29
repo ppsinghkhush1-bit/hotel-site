@@ -56,8 +56,8 @@ export default function BookingModal({
     const finalRoomId = room?.id || "1cff9f52-513d-4a30-89dc-b2d6fa357842";
 
     // Remove hotel_id completely
-    const { error: dbError } = await supabase
-      .from('bookings') // Use the plural 'bookings'
+    const { data, error } = await supabase
+      .from('bookings')
       .insert([
         {
           guest_name: customerName,
@@ -68,10 +68,16 @@ export default function BookingModal({
           num_guests: Number(guests),
           total_price: Number(grandTotal),
           status: 'pending',
-          hotel_id: "GREEN_GARDEN_RESORT", 
-          room_id: "1cff9f52-513d-4a30-89dc-b2d6fa357842" 
+          hotel_id: 'GREEN_GARDEN_RESORT',
+          room_id: '1cff9f52-513d-4a30-89dc-b2d6fa357842'
         }
       ]);
+
+if (error) {
+  console.error('Booking error:', error);
+} else {
+  console.log('Booking success:', data);
+}
 
     if (dbError) {
       console.error("Database Error Detail:", dbError);
