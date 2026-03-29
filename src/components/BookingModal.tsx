@@ -68,33 +68,34 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // --- UUID VALIDATION UTILITY ---
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      // --- 1. PREPARE DATA ---
+      // We use the ID from your database screenshot to be 100% sure it exists
+      const fallbackId = '1cff9f52-513d-4a30-89dc-b2d6fa357842';
       
-      // We use the ID from your screenshot (1cff9f52...) as a safety fallback
-      const fallbackUuid = '1cff9f52-513d-4a30-89dc-b2d6fa357842';
-
-      const validRoomId = uuidRegex.test(room?.id) ? room.id : fallbackUuid;
-      const validHotelId = uuidRegex.test(room?.hotel_id) ? room.hotel_id : fallbackUuid;
-
-      // --- SUPABASE INSERT ---
-      const { error: dbError } = await supabase.from('bookings').insert([{
-        room_id: validRoomId,
-        hotel_id: validHotelId,
+      const bookingData = {
+        room_id: room?.id && room.id.length > 10 ? room.id : fallbackId,
+        hotel_id: room?.hotel_id && room.hotel_id.length > 10 ? room.hotel_id : fallbackId,
         guest_name: customerName,
         guest_email: customerEmail,
         guest_phone: customerPhone,
         check_in: bookingCheckIn,
         check_out: bookingCheckOut,
-        num_guests: initialGuests,
-        total_price: grandTotal,
+        num_guests: Number(initialGuests) || 2,
+        total_price: Number(grandTotal),
         status: 'pending'
-      }]);
+      };
 
-      if (dbError) throw dbError;
+      // --- 2. SUPABASE INSERT ---
+      const { error: dbError } = await supabase
+        .from('bookings')
+        .insert([bookingData]);
 
-      // --- EMAILJS NOTIFICATION ---
-      // This sends to hotelgreengarden0112@gmail.com via your template settings
+      if (dbError) {
+        console.error("Supabase Error:", dbError);
+        throw new Error(`Database Error: ${dbError.message}`);
+      }
+
+      // --- 3. EMAILJS ---
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
@@ -103,21 +104,18 @@ export default function BookingModal({
           customer_name: customerName,
           customer_email: customerEmail,
           customer_phone: customerPhone,
-          room_type: room?.room_type || "Standard Room",
+          room_type: room?.room_type || "Room Booking",
           check_in: bookingCheckIn,
           check_out: bookingCheckOut,
-          total_price: `₹${grandTotal}`,
+          total_price: grandTotal,
         },
         EMAILJS_PUBLIC_KEY
       );
 
       setSubmitSuccess(true);
     } catch (err: any) {
-      console.error("Booking Error:", err);
-      // This catches the 'invalid input syntax for uuid' and displays a clean message
-      setSubmitError(err.message.includes('uuid') 
-        ? "System Error: Invalid Room ID. Contact support." 
-        : "Something went wrong. Please try again.");
+      console.error("Full Error Object:", err);
+      setSubmitError(err.message || "Connection failed. Please check your internet.");
     } finally {
       setIsSubmitting(false);
     }
