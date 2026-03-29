@@ -68,33 +68,36 @@ export default function BookingModal({
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // Use a valid UUID from your 'rooms' table screenshot as a safety fallback
-      const fallbackRoomId = '1cff9f52-513d-4a30-89dc-b2d6fa357842';
-      
+      // Use the valid UUID from your screenshot
+      const fallbackId = '1cff9f52-513d-4a30-89dc-b2d6fa357842';
+      const actualRoomId = room?.id || fallbackId;
+
       const { error: dbError } = await supabase.from('bookings').insert([{
-        room_id: (room?.id && room.id.length > 10) ? room.id : fallbackRoomId,
-        // Since we removed the constraint in SQL, we can send null or the fallback
-        hotel_id: (room?.hotel_id && room.hotel_id.length > 10) ? room.hotel_id : fallbackRoomId, 
+        room_id: actualRoomId,
+        hotel_id: room?.hotel_id || fallbackId,
         guest_name: customerName,
         guest_email: customerEmail,
         guest_phone: customerPhone,
         check_in: bookingCheckIn,
         check_out: bookingCheckOut,
-        num_guests: initialGuests,
-        total_price: grandTotal,
+        num_guests: Number(initialGuests),
+        total_price: Number(grandTotal),
         status: 'pending'
       }]);
 
       if (dbError) throw dbError;
 
-      // EmailJS Call
+      // --- EMAIL NOTIFICATION ---
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
           to_email: 'hotelgreengarden0112@gmail.com',
           customer_name: customerName,
+          customer_email: customerEmail,
           room_type: room?.room_type || "Room Booking",
+          check_in: bookingCheckIn,
+          check_out: bookingCheckOut,
           total_price: `₹${grandTotal}`,
         },
         EMAILJS_PUBLIC_KEY
@@ -102,8 +105,8 @@ export default function BookingModal({
 
       setSubmitSuccess(true);
     } catch (err: any) {
-      console.error(err);
-      setSubmitError("Booking failed. Please check the database SQL fix.");
+      console.error("Final Debug Error:", err);
+      setSubmitError("Database Policy Error. Did you run the SQL fix in Step 1?");
     } finally {
       setIsSubmitting(false);
     }
