@@ -72,17 +72,13 @@ export default function BookingModal({
           room_id: '1cff9f52-513d-4a30-89dc-b2d6fa357842'
         }
       ]);
-
+    
     if (error) {
       console.error('Booking error:', error);
-    } else {
-      console.log('Booking success:', data);
+      throw error;
     }
-
-    if (dbError) {
-      console.error("Database Error Detail:", dbError);
-      throw dbError;
-    }
+    
+    console.log('Booking success:', data);
 
     // EmailJS logic stays the same...
     await emailjs.send(
