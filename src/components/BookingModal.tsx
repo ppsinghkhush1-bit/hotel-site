@@ -67,54 +67,54 @@ export default function BookingModal({
       }
 
       const handleConfirmBooking = async () => {
-  if (!customerName || !customerEmail || !customerPhone) {
-    setSubmitError("Please fill in all details.");
-    return;
-  }
-
-  try {
-    setIsSubmitting(true);
-    setSubmitError(null);
-
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-    // 🔥 FORCE VALID UUID (NO STRING BUG POSSIBLE)
-    let finalRoomId = "1cff9f52-513d-4a30-89dc-b2d6fa357842"; // fallback
-
-    if (room?.id && uuidRegex.test(room.id)) {
-      finalRoomId = room.id;
-    }
-
-    console.log("FINAL ROOM ID:", finalRoomId);
-
-    const { error: dbError } = await supabase.from('bookings').insert([{
-      room_id: finalRoomId, // ✅ ALWAYS UUID
-      hotel_id: "GREEN_GARDEN_RESORT", // ✅ TEXT
-      guest_name: customerName,
-      guest_email: customerEmail,
-      guest_phone: customerPhone,
-      check_in: dateIn,
-      check_out: dateOut,
-      num_guests: Number(guests),
-      total_price: Number(grandTotal),
-      status: 'pending'
-    }]);
-
-    if (dbError) throw dbError;
-
-    await emailjs.send(
-      EMAILJS_SERVICE_ID,
-      EMAILJS_TEMPLATE_ID,
-      {
-        customer_name: customerName,
-        customer_email: customerEmail,
-        room_type: room?.room_type || "Luxury Suite",
-        total_price: `₹${grandTotal}`,
-        check_in: dateIn,
-        check_out: dateOut
-      },
-      EMAILJS_PUBLIC_KEY
-    );
+        if (!customerName || !customerEmail || !customerPhone) {
+          setSubmitError("Please fill in all details.");
+          return;
+        }
+      
+        try {
+          setIsSubmitting(true);
+          setSubmitError(null);
+      
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
+          // 🔥 FORCE VALID UUID (NO STRING BUG POSSIBLE)
+          let finalRoomId = "1cff9f52-513d-4a30-89dc-b2d6fa357842"; // fallback
+      
+          if (room?.id && uuidRegex.test(room.id)) {
+            finalRoomId = room.id;
+          }
+      
+          console.log("FINAL ROOM ID:", finalRoomId);
+      
+          const { error: dbError } = await supabase.from('bookings').insert([{
+            room_id: finalRoomId, // ✅ ALWAYS UUID
+            hotel_id: "GREEN_GARDEN_RESORT", // ✅ TEXT
+            guest_name: customerName,
+            guest_email: customerEmail,
+            guest_phone: customerPhone,
+            check_in: dateIn,
+            check_out: dateOut,
+            num_guests: Number(guests),
+            total_price: Number(grandTotal),
+            status: 'pending'
+          }]);
+      
+          if (dbError) throw dbError;
+      
+          await emailjs.send(
+            EMAILJS_SERVICE_ID,
+            EMAILJS_TEMPLATE_ID,
+            {
+              customer_name: customerName,
+              customer_email: customerEmail,
+              room_type: room?.room_type || "Luxury Suite",
+              total_price: `₹${grandTotal}`,
+              check_in: dateIn,
+              check_out: dateOut
+            },
+            EMAILJS_PUBLIC_KEY
+          );
 
     setSubmitSuccess(true);
 
