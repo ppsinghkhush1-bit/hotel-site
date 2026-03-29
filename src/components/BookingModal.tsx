@@ -1,147 +1,196 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import emailjs from "@emailjs/browser";
 
-const SERVICE_ID = 'service_12y6xre';
-const TEMPLATE_ID = 'template_1scrkoq';
-const PUBLIC_KEY = 'bsmrGxOAEmpS7_WtU';
+const EMAILJS_SERVICE_ID = "service_12y6xre";
+const EMAILJS_TEMPLATE_ID = "template_1scrkoq";
+const EMAILJS_PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
 
-export default function BookingForm() {
-  const today = new Date().toISOString().split('T')[0];
-  const [formData, setFormData] = useState({
-    hotel: "Blossom",
-    checkIn: "",
-    checkOut: "",
-    name: "",
-    mobile: "",
-    email: "",
-  });
+interface BookingFormProps {
+  room: {
+    name: string;
+    basePrice: number;
+  };
+}
+
+export default function BookingForm({ room }: BookingFormProps) {
+  const today = new Date().toISOString().split("T")[0];
+  const BREAKFAST_PRICE = 200;
+
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [name, setName] = useState("");
+  const [mobileNo, setMobileNo] = useState("");
+  const [email, setEmail] = useState("");
+  const [addBreakfast, setAddBreakfast] = useState(false);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  // Calculate nights difference; fallback to 1 for invalid input
+  const nights = useMemo(() => {
+    if (!checkIn || !checkOut) return 1;
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    const diffTime = checkOutDate.getTime() - checkInDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 1;
+  }, [checkIn, checkOut]);
+
+  const totalPrice = (room.basePrice + (addBreakfast ? BREAKFAST_PRICE : 0)) * nights;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Basic validation
-    for (const key in formData) {
-      if (!formData[key as keyof typeof formData]) {
-        alert(`Please enter ${key}`);
-        return;
-      }
+    // Simple validation
+    if (!checkIn || !checkOut || !name || !mobileNo || !email) {
+      setMessage("Please fill all fields.");
+      return;
     }
 
     setSending(true);
     setMessage("");
-    console.log("Sending email with data:", formData);
 
     try {
-      const result = await emailjs.send(
-        SERVICE_ID,
-        TEMPLATE_ID,
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
         {
-          hotel: formData.hotel,
-          check_in: formData.checkIn,
-          check_out: formData.checkOut,
-          customer_name: formData.name,
-          customer_mobile: formData.mobile,
-          customer_email: formData.email,
+          room_name: room.name,
+          base_price: room.basePrice,
+          breakfast_included: addBreakfast ? "Yes" : "No",
+          total_price: `₹${totalPrice}`,
+          check_in: checkIn,
+          check_out: checkOut,
+          customer_name: name,
+          customer_mobile: mobileNo,
+          customer_email: email,
         },
-        PUBLIC_KEY
+        EMAILJS_PUBLIC_KEY
       );
-      console.log("EmailJS result:", result);
-      alert("Booking request sent successfully!");
-      setMessage("Booking sent; please check email (sometimes spam folder).");
-      setFormData({
-        hotel: "Blossom",
-        checkIn: "",
-        checkOut: "",
-        name: "",
-        mobile: "",
-        email: "",
-      });
+      setMessage("Booking request sent successfully!");
+      // Reset form (optional)
+      setCheckIn("");
+      setCheckOut("");
+      setName("");
+      setMobileNo("");
+      setEmail("");
+      setAddBreakfast(false);
     } catch (error) {
       console.error("EmailJS error:", error);
-      alert("Failed to send booking request, please try again.");
-      setMessage("Failed to send email.");
+      setMessage("Failed to send booking request. Please try again.");
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <section className="p-4 max-w-full font-sans">
-      <form onSubmit={handleSubmit} className="flex gap-3 flex-wrap items-center">
-        <select
-          name="hotel"
-          onChange={handleChange}
-          value={formData.hotel}
-          className="border p-2 rounded text-black min-w-[140px]"
-          required
-        >
-          <option>Blossom</option>
-          <option>Hotel Green Garden</option>
-        </select>
+    <section className="max-w-full px-6 py-6 font-sans">
+      <form onSubmit={handleSubmit} className="flex flex-nowrap items-center gap-3 max-w-full overflow-x-auto">
+        {/* Room Name Display */}
+        <div className="min-w-[150px] text-black font-semibold truncate">{room.name}</div>
 
-        <input
-          type="date"
-          name="checkIn"
-          min={today}
-          onChange={handleChange}
-          value={formData.checkIn}
-          className="border p-2 rounded text-black min-w-[140px]"
-          required
-        />
-        <input
-          type="date"
-          name="checkOut"
-          min={formData.checkIn || today}
-          onChange={handleChange}
-          value={formData.checkOut}
-          className="border p-2 rounded text-black min-w-[140px]"
-          required
-        />
-        <input
-          type="text"
-          name="name"
-          placeholder="Name"
-          onChange={handleChange}
-          value={formData.name}
-          className="border p-2 rounded text-black min-w-[160px]"
-          required
-        />
-        <input
-          type="tel"
-          name="mobile"
-          placeholder="+91..."
-          onChange={handleChange}
-          value={formData.mobile}
-          className="border p-2 rounded text-black min-w-[140px]"
-          required
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="your@email.com"
-          onChange={handleChange}
-          value={formData.email}
-          className="border p-2 rounded text-black min-w-[180px]"
-          required
-        />
+        {/* Check In */}
+        <div className="flex flex-col min-w-[140px]">
+          <label className="text-xs font-semibold uppercase mb-1 text-black">Check In</label>
+          <input
+            type="date"
+            value={checkIn}
+            min={today}
+            onChange={(e) => setCheckIn(e.target.value)}
+            className="border border-gray-400 rounded-md p-2 text-black"
+            required
+          />
+        </div>
+
+        {/* Check Out */}
+        <div className="flex flex-col min-w-[140px]">
+          <label className="text-xs font-semibold uppercase mb-1 text-black">Check Out</label>
+          <input
+            type="date"
+            value={checkOut}
+            min={checkIn || today}
+            onChange={(e) => setCheckOut(e.target.value)}
+            className="border border-gray-400 rounded-md p-2 text-black"
+            required
+          />
+        </div>
+
+        {/* Name */}
+        <div className="flex flex-col min-w-[160px]">
+          <label className="text-xs font-semibold uppercase mb-1 text-black">Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Full name"
+            className="border border-gray-400 rounded-md p-2 text-black"
+            required
+          />
+        </div>
+
+        {/* Mobile No */}
+        <div className="flex flex-col min-w-[140px]">
+          <label className="text-xs font-semibold uppercase mb-1 text-black">Mobile No.</label>
+          <input
+            type="tel"
+            value={mobileNo}
+            onChange={(e) => setMobileNo(e.target.value)}
+            placeholder="+91 9000000000"
+            className="border border-gray-400 rounded-md p-2 text-black"
+            required
+          />
+        </div>
+
+        {/* Email */}
+        <div className="flex flex-col min-w-[180px]">
+          <label className="text-xs font-semibold uppercase mb-1 text-black">E-mail</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="example@mail.com"
+            className="border border-gray-400 rounded-md p-2 text-black"
+            required
+          />
+        </div>
+
+        {/* Breakfast Checkbox */}
+        <label className="flex items-center min-w-[130px] gap-2 text-black text-xs font-semibold">
+          <input
+            type="checkbox"
+            checked={addBreakfast}
+            onChange={(e) => setAddBreakfast(e.target.checked)}
+            className="w-4 h-4"
+          />
+          + Add Breakfast ₹200
+        </label>
+
+        {/* Total Price */}
+        <div className="min-w-[150px] font-bold text-lg flex items-center justify-center text-black">
+          ₹{totalPrice.toLocaleString("en-IN")}
+        </div>
+
+        {/* Book Now button */}
         <button
           type="submit"
           disabled={sending}
-          className={`border border-red-600 p-3 rounded font-semibold min-w-[130px] transition ${
-            sending ? "opacity-50 cursor-not-allowed bg-red-600 text-white" : "text-red-600 hover:bg-red-600 hover:text-white"
+          className={`min-w-[140px] py-3 px-6 rounded border border-red-600 font-bold transition ${
+            sending ? "bg-red-600 text-white opacity-50 cursor-not-allowed" : "text-red-600 hover:bg-red-600 hover:text-white"
           }`}
         >
-          {sending ? "Sending..." : "Book Now"}
+          {sending ? "Booking..." : "Book Now"}
         </button>
       </form>
-      {message && <p className="mt-3 text-center text-sm font-semibold">{message}</p>}
+
+      {/* Message */}
+      {message && (
+        <p
+          className={`mt-3 text-center text-sm font-semibold ${
+            message.toLowerCase().includes("success") ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          {message}
+        </p>
+      )}
     </section>
   );
 }
