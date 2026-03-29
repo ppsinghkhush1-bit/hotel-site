@@ -23,18 +23,32 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Calculate nights (minimum 1)
+  // Reset form if roomName or basePrice change (optional, keeps data consistent)
+  useEffect(() => {
+    setCheckIn("");
+    setCheckOut("");
+    setName("");
+    setMobileNo("");
+    setEmail("");
+    setAddBreakfast(false);
+    setMessage("");
+  }, [roomName, basePrice]);
+
+  // Calculate nights difference - minimum nights = 1
   const nights = useMemo(() => {
     if (!checkIn || !checkOut) return 1;
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    const diffMs = end.getTime() - start.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 1;
+    const d1 = new Date(checkIn);
+    const d2 = new Date(checkOut);
+    const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 1;
   }, [checkIn, checkOut]);
 
+  // Calculate totalPrice, make sure it's a valid number, fallback 0 if basePrice invalid
   const totalPrice = useMemo(() => {
-    return (basePrice + (addBreakfast ? BREAKFAST_PRICE : 0)) * nights;
+    const base = Number(basePrice);
+    if (isNaN(base)) return 0;
+    const breakfast = addBreakfast ? BREAKFAST_PRICE : 0;
+    return (base + breakfast) * nights;
   }, [basePrice, addBreakfast, nights]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,13 +60,11 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
 
     setSending(true);
     setMessage("");
-
     try {
       await emailjs.send(
         SERVICE_ID,
         TEMPLATE_ID,
         {
-          // Variables matching your EmailJS template placeholders
           customer_name: name,
           customer_email: email,
           customer_mobile: mobileNo,
@@ -60,11 +72,12 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
           check_in: checkIn,
           check_out: checkOut,
           add_breakfast: addBreakfast ? "Yes" : "No",
-          total_price: totalPrice.toString(), // send number only, no ₹ here
+          total_price: totalPrice.toString(), // send only number/string, no ₹ here
         },
         PUBLIC_KEY
       );
       setMessage("Booking request sent successfully!");
+      // Optional: clear fields after submit success if needed
       setCheckIn("");
       setCheckOut("");
       setName("");
@@ -80,24 +93,22 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
   };
 
   return (
-    <section className="max-w-full px-6 py-6 bg-transparent font-sans">
+    <section className="max-w-full p-6 font-sans bg-transparent">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-nowrap gap-3 max-w-full overflow-x-auto items-center"
+        className="flex flex-nowrap items-center gap-4 overflow-x-auto max-w-full"
       >
-        {/* Room Name */}
-        <div className="min-w-[160px] font-semibold text-black truncate whitespace-nowrap">
-          {roomName}
-        </div>
+        {/* Show room name */}
+        <div className="min-w-[160px] font-semibold text-black truncate">{roomName}</div>
 
-        {/* Check In */}
+        {/* Check In Date */}
         <div className="flex flex-col min-w-[140px]">
           <label htmlFor="checkIn" className="text-xs font-bold uppercase mb-1 text-black">
             Check In
           </label>
           <input
-            type="date"
             id="checkIn"
+            type="date"
             value={checkIn}
             min={today}
             onChange={(e) => setCheckIn(e.target.value)}
@@ -106,16 +117,16 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
           />
         </div>
 
-        {/* Check Out */}
+        {/* Check Out Date */}
         <div className="flex flex-col min-w-[140px]">
           <label htmlFor="checkOut" className="text-xs font-bold uppercase mb-1 text-black">
             Check Out
           </label>
           <input
-            type="date"
             id="checkOut"
-            value={checkOut}
+            type="date"
             min={checkIn || today}
+            value={checkOut}
             onChange={(e) => setCheckOut(e.target.value)}
             className="border border-gray-400 rounded-md p-2 text-black"
             required
@@ -130,9 +141,9 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
           <input
             type="text"
             id="name"
-            placeholder="Full name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder="Full name"
             className="border border-gray-400 rounded-md p-2 text-black"
             required
           />
@@ -146,9 +157,9 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
           <input
             type="tel"
             id="mobileNo"
-            placeholder="+91 1234567890"
             value={mobileNo}
             onChange={(e) => setMobileNo(e.target.value)}
+            placeholder="+91 9000000000"
             className="border border-gray-400 rounded-md p-2 text-black"
             required
           />
@@ -162,16 +173,16 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
           <input
             type="email"
             id="email"
-            placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
             className="border border-gray-400 rounded-md p-2 text-black"
             required
           />
         </div>
 
-        {/* Breakfast */}
-        <label className="inline-flex items-center min-w-[130px] gap-2 text-black text-xs font-semibold whitespace-nowrap">
+        {/* Breakfast Checkbox */}
+        <label className="inline-flex items-center min-w-[140px] gap-2 text-black text-xs font-semibold whitespace-nowrap">
           <input
             type="checkbox"
             checked={addBreakfast}
@@ -181,8 +192,8 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
           Add Breakfast ₹200
         </label>
 
-        {/* Total Price */}
-        <div className="min-w-[140px] font-bold text-lg text-black flex items-center justify-center whitespace-nowrap">
+        {/* Display Total Price */}
+        <div className="min-w-[140px] font-bold text-lg flex items-center justify-center text-black whitespace-nowrap">
           ₹{totalPrice.toLocaleString("en-IN")}
         </div>
 
@@ -200,10 +211,10 @@ export default function BookingForm({ roomName, basePrice }: BookingFormProps) {
         </button>
       </form>
 
-      {/* Display message */}
+      {/* Show success or error message */}
       {message && (
         <p
-          className={`mt-3 text-center text-sm font-semibold ${
+          className={`mt-3 text-center font-semibold ${
             message.toLowerCase().includes("success") ? "text-green-600" : "text-red-600"
           }`}
         >
