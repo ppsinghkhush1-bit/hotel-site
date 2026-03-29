@@ -1,191 +1,295 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import emailjs from "@emailjs/browser";
+import { X, CheckCircle } from "lucide-react";
 
-export default function DirectBookingForm() {
+const EMAILJS_SERVICE_ID = "service_12y6xre";
+const EMAILJS_TEMPLATE_ID = "template_mz16rsu";
+const EMAILJS_PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
+
+export default function BookingSection({ room }: { room: { room_type: string; price_per_night: number } }) {
   // Form state
-  const [hotel, setHotel] = useState("Blossom");
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [name, setName] = useState("");
-  const [mobileNo, setMobileNo] = useState("");
-  const [email, setEmail] = useState("");
+  const [formData, setFormData] = useState({
+    hotel: "Blossom",
+    checkIn: "",
+    checkOut: "",
+    name: "",
+    mobileNo: "",
+    email: "",
+    addBreakfast: false,
+  });
 
-  const today = new Date().toISOString().split("T")[0];
+  const [showModal, setShowModal] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [bookingStatus, setBookingStatus] = useState<"idle" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Calculate number of nights between checkIn and checkOut
+  const totalNights = useMemo(() => {
+    if (!formData.checkIn || !formData.checkOut) return 1;
+    const checkInDate = new Date(formData.checkIn);
+    const checkOutDate = new Date(formData.checkOut);
+    const diffTime = checkOutDate.getTime() - checkInDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 1;
+  }, [formData.checkIn, formData.checkOut]);
+
+  // Calculate total price with optional breakfast
+  const totalPrice = useMemo(() => {
+    const price = room?.price_per_night || 0;
+    const breakfastPrice = formData.addBreakfast ? 200 : 0;
+    return (price + breakfastPrice) * totalNights;
+  }, [room, formData.addBreakfast, totalNights]);
+
+  // Input change handler
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, type } = e.target;
+    const value = type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // On main form submit, show modal for final confirmation
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Add your submit logic here (e.g. EmailJS or API call)
-    alert(`Booking submitted for ${name} at ${hotel}`);
+
+    if (
+      !formData.hotel ||
+      !formData.checkIn ||
+      !formData.checkOut ||
+      !formData.name ||
+      !formData.mobileNo ||
+      !formData.email
+    ) {
+      setErrorMsg("Please fill all fields before proceeding.");
+      return;
+    }
+    setErrorMsg("");
+    setShowModal(true);
+  };
+
+  // Confirm booking: send email with EmailJS
+  const confirmBooking = async () => {
+    setSending(true);
+    setBookingStatus("idle");
+    setErrorMsg("");
+    try {
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          customer_name: formData.name,
+          customer_email: formData.email,
+          customer_phone: formData.mobileNo,
+          hotel: formData.hotel,
+          room_type: room?.room_type || "Room",
+          check_in: formData.checkIn,
+          check_out: formData.checkOut,
+          add_breakfast: formData.addBreakfast ? "Yes" : "No",
+          total_nights: totalNights.toString(),
+          total_price: `₹${totalPrice}`,
+        },
+        EMAILJS_PUBLIC_KEY
+      );
+      setBookingStatus("success");
+    } catch (error) {
+      setBookingStatus("error");
+      setErrorMsg("Failed to send booking. Please try again later.");
+      console.error(error);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Close modal resets booking status and closes
+  const closeModal = () => {
+    setShowModal(false);
+    setBookingStatus("idle");
+    setErrorMsg("");
   };
 
   return (
-    <section className="font-sans">
-      {/* Booking bar container */}
+    <>
+      {/* Booking Form Bar */}
       <form
-        onSubmit={handleSubmit}
-        className="bg-transparent p-4 grid grid-cols-7 gap-x-4 items-end overflow-x-auto"
+        onSubmit={handleFormSubmit}
+        className="max-w-7xl mx-auto bg-white p-6 rounded-2xl shadow-xl border border-gray-100 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-6 items-end"
       >
-        {/* Labels above inputs */}
-        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
-          Hotel
-        </div>
-        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
-          Check In
-        </div>
-        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
-          Check Out
-        </div>
-        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
-          Name
-        </div>
-        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
-          Mobile No.
-        </div>
-        <div className="col-span-1 text-white font-semibold text-xs mb-1 whitespace-nowrap">
-          E-mail
-        </div>
-        <div></div> {/* Empty column for Book Now label alignment */}
+        {/* Hotel */}
+        <InputGroup label="Hotel">
+          <select
+            name="hotel"
+            value={formData.hotel}
+            onChange={handleInputChange}
+            className="input-style"
+          >
+            <option>Blossom</option>
+            <option>Hotel Green Garden</option>
+          </select>
+        </InputGroup>
 
-        {/* Input fields */}
-        <select
-          value={hotel}
-          onChange={(e) => setHotel(e.target.value)}
-          className="col-span-1 rounded border border-black p-2 text-black"
-          aria-label="Hotel"
-          required
-        >
-          <option>Blossom</option>
-          <option>Another Hotel</option>
-        </select>
+        {/* Check In */}
+        <InputGroup label="Check In">
+          <input
+            type="date"
+            name="checkIn"
+            min={new Date().toISOString().split("T")[0]}
+            value={formData.checkIn}
+            onChange={handleInputChange}
+            className="input-style"
+            required
+          />
+        </InputGroup>
 
-        <input
-          type="date"
-          min={today}
-          value={checkIn}
-          onChange={(e) => setCheckIn(e.target.value)}
-          className="col-span-1 p-2 rounded border border-black text-black"
-          aria-label="Check In"
-          required
-        />
+        {/* Check Out */}
+        <InputGroup label="Check Out">
+          <input
+            type="date"
+            name="checkOut"
+            min={formData.checkIn || new Date().toISOString().split("T")[0]}
+            value={formData.checkOut}
+            onChange={handleInputChange}
+            className="input-style"
+            required
+          />
+        </InputGroup>
 
-        <input
-          type="date"
-          min={checkIn || today}
-          value={checkOut}
-          onChange={(e) => setCheckOut(e.target.value)}
-          className="col-span-1 p-2 rounded border border-black text-black"
-          aria-label="Check Out"
-          required
-        />
+        {/* Name */}
+        <InputGroup label="Full Name">
+          <input
+            type="text"
+            name="name"
+            placeholder="John Doe"
+            value={formData.name}
+            onChange={handleInputChange}
+            className="input-style"
+            required
+          />
+        </InputGroup>
 
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder=""
-          className="col-span-1 p-2 rounded border border-black text-black"
-          aria-label="Name"
-          required
-        />
+        {/* Mobile No */}
+        <InputGroup label="Mobile">
+          <input
+            type="tel"
+            name="mobileNo"
+            placeholder="+91-XXXXXXXXXX"
+            value={formData.mobileNo}
+            onChange={handleInputChange}
+            className="input-style"
+            required
+          />
+        </InputGroup>
 
-        <input
-          type="tel"
-          value={mobileNo}
-          onChange={(e) => setMobileNo(e.target.value)}
-          placeholder=""
-          className="col-span-1 p-2 rounded border border-black text-black"
-          aria-label="Mobile No."
-          required
-        />
+        {/* Email */}
+        <InputGroup label="Email">
+          <input
+            type="email"
+            name="email"
+            placeholder="alex@mail.com"
+            value={formData.email}
+            onChange={handleInputChange}
+            className="input-style"
+            required
+          />
+        </InputGroup>
 
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder=""
-          className="col-span-1 p-2 rounded border border-black text-black"
-          aria-label="E-mail"
-          required
-        />
+        {/* Add Breakfast checkbox */}
+        <div className="flex items-center space-x-2 lg:col-span-7">
+          <input
+            id="addBreakfast"
+            type="checkbox"
+            name="addBreakfast"
+            checked={formData.addBreakfast}
+            onChange={handleInputChange}
+            className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+          />
+          <label htmlFor="addBreakfast" className="text-gray-700 text-sm select-none">
+            + Add Breakfast ₹200
+          </label>
+        </div>
 
         {/* Book Now button */}
         <button
           type="submit"
-          className="col-span-1 border border-red-600 text-red-600 font-bold rounded py-2 px-5 hover:bg-red-600 hover:text-white transition"
+          className="lg:col-span-7 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition transform hover:scale-105 shadow-lg"
+          disabled={sending}
         >
-          Book Now
+          {sending ? "Please wait..." : "Book Now"}
         </button>
       </form>
 
-      {/* Contact bar */}
-      <div className="bg-[#473605] text-white text-center py-4 px-3 tracking-wide">
-        <h2 className="font-bold text-lg mb-1">Direct Hotel Booking</h2>
-        <p className="text-sm">
-          Phone No. +91 80191600498 | Reservation Number , Email:{" "}
-          <a href="mailto:reservations@blossomhotels.in" className="underline">
-            reservations@blossomhotels.in
-          </a>
-        </p>
-      </div>
+      {/* Error message */}
+      {errorMsg && (
+        <p className="mt-4 text-red-600 text-center font-semibold max-w-7xl mx-auto">{errorMsg}</p>
+      )}
 
-      {/* Benefits Banner */}
-      <div className="mt-8 overflow-x-auto">
-        <div
-          className="relative bg-black bg-opacity-90 rounded-lg shadow-lg flex items-center justify-between px-6 py-4 whitespace-nowrap text-white font-bold text-xl max-w-full"
-          style={{
-            clipPath: "polygon(0 0, calc(100% - 30px) 0, 100% 50%, calc(100% - 30px) 100%, 0 100%)",
-          }}
-        >
-          <div>
-            BENEFITS OF DIRECT <span className="underline">BOOKING</span>
-            <br />
-            <span className="text-sm font-normal normal-case mt-1 block">
-              *Subject To Availability
-            </span>
-          </div>
+      {/* Booking Confirmation Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-6 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-8 relative animate-fadeIn">
+            <button
+              className="absolute top-6 right-6 text-gray-500 hover:text-gray-900"
+              aria-label="Close modal"
+              onClick={closeModal}
+            >
+              <X size={24} />
+            </button>
 
-          <div className="flex space-x-12 ml-10 text-base font-semibold">
-            {/* Room Upgrade */}
-            <div className="flex items-center space-x-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M3 10h2v4H3v-4zm4 0h2v4H7v-4zm4 0h2v4h-2v-4zm4 0h2v4h-2v-4zM21 10h-2v4h2v-4z" />
-                <path d="M17 10V5a2 2 0 00-2-2H9a2 2 0 00-2 2v5h10z" />
-              </svg>
-              <span>ROOM UPGRADE</span>
-            </div>
-
-            {/* Early Check-In */}
-            <div className="flex items-center space-x-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M8 7V3m8 4V3m-4 18v-4m-2-5h4m-6 7a9 9 0 11-2-7.89M12 8v4l2 2" />
-              </svg>
-              <span>EARLY CHECK-IN</span>
-            </div>
-
-            {/* Late Check-Out */}
-            <div className="flex items-center space-x-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 4v2m0 12v2m8-10h-3M7 8H4m16 4h-3M7 16H4m14.364-1.636l-2.121-2.12M7.757 7.757L5.636 5.636m0 10.728l2.121-2.12M16.243 16.243l2.121 2.122" />
-              </svg>
-              <span>LATE CHECK-OUT</span>
-            </div>
+            {bookingStatus === "success" ? (
+              <div className="text-center">
+                <CheckCircle size={64} className="mx-auto text-emerald-500 mb-6" />
+                <h2 className="text-3xl font-bold mb-4">Booking Confirmed!</h2>
+                <p className="text-gray-700 mb-8">Thanks for booking at {formData.hotel}.</p>
+                <button
+                  onClick={closeModal}
+                  className="px-8 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 font-semibold"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold mb-6">Confirm Your Booking</h2>
+                <div className="space-y-4">
+                  <Detail label="Hotel" value={formData.hotel} />
+                  <Detail label="Room Type" value={room.room_type} />
+                  <Detail label="Check In" value={formData.checkIn} />
+                  <Detail label="Check Out" value={formData.checkOut} />
+                  <Detail label="Nights" value={totalNights + " night(s)"} />
+                  <Detail label="Name" value={formData.name} />
+                  <Detail label="Mobile" value={formData.mobileNo} />
+                  <Detail label="Email" value={formData.email} />
+                  <Detail label="Breakfast Included" value={formData.addBreakfast ? "Yes" : "No"} />
+                  <Detail label="Total Price" value={`₹${totalPrice}`} />
+                </div>
+                <button
+                  onClick={confirmBooking}
+                  disabled={sending}
+                  className="mt-8 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold transition disabled:opacity-70"
+                >
+                  {sending ? "Sending..." : "Confirm & Send Booking"}
+                </button>
+              </>
+            )}
           </div>
         </div>
-      </div>
-    </section>
+      )}
+    </>
+  );
+}
+
+function InputGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col">
+      <label className="text-sm font-semibold text-gray-700 mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between border-b border-gray-200 py-2">
+      <span className="font-semibold text-gray-600">{label}</span>
+      <span>{value}</span>
+    </div>
   );
 }
