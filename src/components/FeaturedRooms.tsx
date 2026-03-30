@@ -341,12 +341,12 @@ export default function BookingForm() {
 
       {/* Contact Info Bar */}
       <div className="mt-8 bg-[#473605] text-white text-center py-3 text-sm font-semibold tracking-wide rounded-md select-none">
-        Phone No. +91 80191600498 | Reservation Number | Email:{" "}
+        Phone No. +91 07814 91779 | Reservation Number | Email:{" "}
         <a
           href="mailto:reservations@blossomhotels.in"
           className="underline hover:text-gray-200"
         >
-          reservations@blossomhotels.in
+          hotelgreengarden0112@gmail.com
         </a>
       </div>
 
