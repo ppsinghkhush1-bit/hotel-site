@@ -64,7 +64,7 @@ export default function RoomsPage() {
         {
           id: 203,
           roomNumber: '203',
-          available: false,
+          available: true,
           image: '/203.jpeg',
           galleryImages: ['/203.jpeg']
         },
@@ -110,7 +110,7 @@ export default function RoomsPage() {
         {
           id: 208,
           roomNumber: '208',
-          available: false,
+          available: true,
           image: '/de4.jpeg',
           galleryImages: ['/de4.jpeg']
         },
@@ -135,23 +135,23 @@ export default function RoomsPage() {
       name: 'Luxury Room',
       basePrice: 2500,
       duration: '24 hours',
-      image: '/de3.jpeg',
-      description: 'Luxury room with high-end features and design.',
+      image: '/luxury.jpeg',
+      description: 'Luxury room with high-end features and elegant design.',
       maxGuests: 3,
       rooms: [
         {
-          id: 401,
-          roomNumber: '401',
+          id: 301,
+          roomNumber: '301',
           available: false,
-          image: '/de3.jpeg',
-          galleryImages: ['/de3.jpeg']
+          image: '/luxury.jpeg',
+          galleryImages: ['/luxury.jpeg']
         },
         {
-          id: 402,
-          roomNumber: '402',
-          available: true,
-          image: '/de4.jpeg',
-          galleryImages: ['/de4.jpeg']
+          id: 302,
+          roomNumber: '302',
+          available: false,
+          image: '/luxury.jpeg',
+          galleryImages: ['/luxury.jpeg']
         }
       ]
     }
@@ -175,6 +175,8 @@ export default function RoomsPage() {
   };
 
   const handleBookNow = (category: RoomCategory, roomUnit: RoomUnit) => {
+    if (!roomUnit.available) return;
+
     const finalPrice =
       category.basePrice + (breakfast[roomUnit.id] ? BREAKFAST_PRICE : 0);
 
@@ -220,11 +222,12 @@ export default function RoomsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <h1 className="text-3xl font-bold text-center mb-10">Our Rooms</h1>
+      <h1 className="text-3xl font-bold text-center mb-10">Our Room Categories</h1>
 
       <div className="max-w-6xl mx-auto space-y-8">
         {roomCategories.map((category) => (
           <div key={category.id} className="bg-white rounded-2xl shadow overflow-hidden">
+            {/* Category Header */}
             <div
               className="p-6 flex items-center justify-between cursor-pointer border-b"
               onClick={() =>
@@ -254,6 +257,7 @@ export default function RoomsPage() {
               </div>
             </div>
 
+            {/* Category Rooms */}
             {expandedCategory === category.id && (
               <div className="p-6 grid md:grid-cols-2 gap-6">
                 {category.rooms.map((roomUnit) => {
@@ -292,7 +296,7 @@ export default function RoomsPage() {
                             roomUnit.available ? 'text-green-600' : 'text-red-500'
                           }`}
                         >
-                          {roomUnit.available ? 'Available' : 'Not Available'}
+                          {roomUnit.available ? 'Available' : 'Under Maintenance'}
                         </p>
 
                         <div className="text-2xl font-bold text-emerald-600 mt-3">
@@ -303,14 +307,18 @@ export default function RoomsPage() {
                           onClick={() => toggleBreakfast(roomUnit.id)}
                           disabled={!roomUnit.available}
                           className={`mt-4 w-full px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                            breakfast[roomUnit.id]
-                              ? 'bg-emerald-600 text-white border-emerald-600'
-                              : 'bg-white text-gray-700 border-gray-300'
+                            roomUnit.available
+                              ? breakfast[roomUnit.id]
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'bg-white text-gray-700 border-gray-300'
+                              : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                           }`}
                         >
-                          {breakfast[roomUnit.id]
-                            ? `✓ Breakfast Added (+₹${BREAKFAST_PRICE})`
-                            : `+ Add Breakfast ₹${BREAKFAST_PRICE}`}
+                          {roomUnit.available
+                            ? breakfast[roomUnit.id]
+                              ? `✓ Breakfast Added (+₹${BREAKFAST_PRICE})`
+                              : `+ Add Breakfast ₹${BREAKFAST_PRICE}`
+                            : 'Breakfast Unavailable'}
                         </button>
 
                         <div className="flex gap-3 mt-4">
@@ -343,6 +351,7 @@ export default function RoomsPage() {
         ))}
       </div>
 
+      {/* Booking Modal */}
       {showBookingModal && selectedRoom && (
         <BookingModal
           room={selectedRoom}
@@ -354,6 +363,7 @@ export default function RoomsPage() {
         />
       )}
 
+      {/* Details Modal */}
       {showDetailsModal && selectedRoom && (
         <RoomDetailsModal
           room={selectedRoom}
@@ -361,7 +371,7 @@ export default function RoomsPage() {
           onBookNow={() => {
             setShowDetailsModal(false);
 
-            if (selectedCategory) {
+            if (selectedCategory && selectedRoom.available) {
               handleBookNow(selectedCategory, {
                 id: selectedRoom.id,
                 roomNumber: selectedRoom.roomNumber,
