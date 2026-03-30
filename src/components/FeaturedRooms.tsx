@@ -327,7 +327,7 @@ export default function BookingForm() {
       )}
 
       <div className="mt-8 bg-[#473605] text-white text-center py-3 text-sm font-semibold tracking-wide rounded-md select-none">
-        Phone No. +91 07814 91779 | Reservation Number | Email:{" "}
+        Phone No. +91 78143 91779 | Reservation Number | Email:{" "}
         <a
           href="mailto:hotelgreengarden0112@gmail.com"
           className="underline hover:text-gray-200"
