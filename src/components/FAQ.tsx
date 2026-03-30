@@ -193,7 +193,7 @@ export default function FAQ() {
             </a>
 
             <a
-              href="tel:+91781491779"
+              href="tel:+91 78143 91779"
               className="group bg-emerald-800 text-white px-8 py-4 rounded-xl hover:bg-emerald-900 transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center gap-3"
             >
               <Phone
