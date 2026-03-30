@@ -80,7 +80,7 @@ export default function RoomsPage() {
     {
       id: 2,
       name: 'Deluxe Room',
-      basePrice: 1700,
+      basePrice: 1500,
       duration: '24 hours',
       image: '/de1.jpeg',
       description: 'Spacious deluxe room with premium interior and comfort.',
