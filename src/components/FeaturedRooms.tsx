@@ -347,7 +347,7 @@ export default function BookingForm() {
           loading="lazy"
           decoding="async"
           width={800}
-          height={96}
+          height={80}
           src="https://blossomhotels.in/wp-content/uploads/2024/08/book-4.jpg"
           alt="Benefits of direct booking"
           className="w-full max-w-full rounded-lg shadow-lg"
