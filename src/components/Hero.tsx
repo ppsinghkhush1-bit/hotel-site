@@ -29,7 +29,6 @@ export default function Hero() {
 
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60"></div>
 
-        {/* Center Text */}
         <div className="absolute inset-0 flex items-center justify-center px-4">
           <div
             key={currentImageIndex}
@@ -49,28 +48,22 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Bottom Booking Text */}
         <div className="absolute bottom-0 left-0 right-0 pb-12 flex justify-center px-4">
-          <div
-            key={`book-${currentImageIndex}`}
-            className="text-center text-white max-w-3xl"
-          >
-            <div className="overflow-hidden">
-              <div className="book-reveal flex flex-col items-center">
-                <ArrowDownCircle
-                  size={52}
-                  className="mb-4 text-white animate-bounce drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]"
-                />
+          <div className="max-w-4xl w-full text-center text-white">
+            <div className="flex flex-col items-center">
+              <ArrowDownCircle
+                size={48}
+                className="mb-4 text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] animate-bounce"
+              />
 
-                <h2 className="text-2xl md:text-4xl font-bold mb-3 tracking-wide drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]">
-                  Book From Below
-                </h2>
+              <h2 className="text-2xl md:text-4xl font-bold mb-3 drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]">
+                Book From Below
+              </h2>
 
-                <p className="text-base md:text-lg text-white/95 font-medium leading-relaxed max-w-2xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                  Scroll down to discover our rooms and reserve your stay with
-                  the best comfort, luxury, and direct booking benefits.
-                </p>
-              </div>
+              <p className="text-base md:text-lg text-white/95 font-medium leading-relaxed max-w-2xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                Scroll down to explore our rooms and book your perfect stay
+                with comfort, luxury, and the best direct booking benefits.
+              </p>
             </div>
           </div>
         </div>
