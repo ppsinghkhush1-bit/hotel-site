@@ -59,7 +59,7 @@ export default function RoomsPage() {
           roomNumber: '202',
           available: true,
           image: '/202.jpeg',
-          galleryImages: ['/202.jpeg', '/nr1 (202).jpeg']
+          galleryImages: ['/202.jpeg', '/nr (202).jpeg']
         },
         {
           id: 203,
@@ -73,7 +73,7 @@ export default function RoomsPage() {
           roomNumber: '204',
           available: true,
           image: '/204.jpeg',
-          galleryImages: ['/204.jpeg', '/nr1 (204).jpeg']
+          galleryImages: ['/204.jpeg', '/nr (204).jpeg']
         }
       ]
     },
