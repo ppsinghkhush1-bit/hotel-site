@@ -1,6 +1,3 @@
-Here's the **COMPLETE FIXED BookingModal.tsx** with **Book Now button working perfectly**:
-
-```tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import emailjs from "@emailjs/browser";
 import { ArrowLeft, Calendar, X, Loader2, CheckCircle, AlertCircle } from "lucide-react";
