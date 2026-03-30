@@ -112,7 +112,7 @@ export default function ContactForm() {
                     className="text-gray-600"
                     style={{ fontFamily: "'Roboto', sans-serif", fontWeight: 300 }}
                   >
-                    07814 91779
+                    78143 91779
                   </p>
                 </div>
               </div>
