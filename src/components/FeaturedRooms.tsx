@@ -17,11 +17,14 @@ const parseDisplayDate = (dateStr: string): Date | null => {
   if (!dateStr || dateStr.length !== 10) return null;
   const parts = dateStr.split("/");
   if (parts.length !== 3) return null;
+
   const day = parseInt(parts[0], 10);
   const month = parseInt(parts[1], 10);
   const year = parseInt(parts[2], 10);
+
   if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
   if (day < 1 || day > 31 || month < 1 || month > 12 || year < 2000) return null;
+
   return new Date(year, month - 1, day);
 };
 
@@ -57,12 +60,14 @@ const DateInput: React.FC<DateInputProps> = ({
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let raw = e.target.value.replace(/\D/g, "");
     if (raw.length > 8) raw = raw.slice(0, 8);
+
     let formatted = raw;
     if (raw.length > 4) {
-      formatted = raw.slice(0, 2) + "/" + raw.slice(2, 4) + "/" + raw.slice(4);
+      formatted = `${raw.slice(0, 2)}/${raw.slice(2, 4)}/${raw.slice(4)}`;
     } else if (raw.length > 2) {
-      formatted = raw.slice(0, 2) + "/" + raw.slice(2);
+      formatted = `${raw.slice(0, 2)}/${raw.slice(2)}`;
     }
+
     onChange(formatted);
   };
 
@@ -73,7 +78,7 @@ const DateInput: React.FC<DateInputProps> = ({
   const openPicker = () => {
     if (hiddenRef.current) {
       try {
-        (hiddenRef.current as any).showPicker();
+        (hiddenRef.current as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
       } catch {
         hiddenRef.current.click();
       }
@@ -110,6 +115,7 @@ const DateInput: React.FC<DateInputProps> = ({
           />
         </svg>
       </button>
+
       <input
         ref={hiddenRef}
         type="date"
@@ -139,9 +145,12 @@ export default function BookingForm() {
   const nights = useMemo(() => {
     const start = parseDisplayDate(checkIn);
     const end = parseDisplayDate(checkOut);
+
     if (!start || !end) return 1;
+
     const diff = end.getTime() - start.getTime();
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
     return days > 0 ? days : 1;
   }, [checkIn, checkOut]);
 
@@ -165,10 +174,12 @@ export default function BookingForm() {
       setMessage("Please enter valid dates in DD/MM/YYYY format.");
       return;
     }
+
     if (!name || !mobileNo || !email) {
       setMessage("Please fill all the fields.");
       return;
     }
+
     if (!selectedRoom.available) {
       setMessage("Selected room is not available.");
       return;
@@ -193,6 +204,7 @@ export default function BookingForm() {
         },
         PUBLIC_KEY
       );
+
       setMessage("Booking request sent successfully!");
       setCheckIn("");
       setCheckOut("");
@@ -211,12 +223,10 @@ export default function BookingForm() {
 
   return (
     <section className="max-w-full px-6 py-6 font-sans bg-transparent">
-      {/* Booking Form */}
       <form
         onSubmit={handleSubmit}
         className="flex flex-nowrap items-center gap-3 max-w-full overflow-x-auto"
       >
-        {/* Room Select */}
         <select
           value={selectedRoom.name}
           onChange={handleRoomChange}
@@ -230,7 +240,6 @@ export default function BookingForm() {
           ))}
         </select>
 
-        {/* Check In */}
         <DateInput
           value={checkIn}
           onChange={setCheckIn}
@@ -238,7 +247,6 @@ export default function BookingForm() {
           placeholder="Check In DD/MM/YYYY"
         />
 
-        {/* Check Out */}
         <DateInput
           value={checkOut}
           onChange={setCheckOut}
@@ -246,7 +254,6 @@ export default function BookingForm() {
           placeholder="Check Out DD/MM/YYYY"
         />
 
-        {/* Name */}
         <input
           type="text"
           value={name}
@@ -256,7 +263,6 @@ export default function BookingForm() {
           required
         />
 
-        {/* Mobile */}
         <input
           type="tel"
           value={mobileNo}
@@ -266,7 +272,6 @@ export default function BookingForm() {
           required
         />
 
-        {/* Email */}
         <input
           type="email"
           value={email}
@@ -276,7 +281,6 @@ export default function BookingForm() {
           required
         />
 
-        {/* Breakfast */}
         <label className="inline-flex items-center min-w-[140px] gap-2 text-black text-xs font-semibold whitespace-nowrap select-none cursor-pointer">
           <input
             type="checkbox"
@@ -287,12 +291,10 @@ export default function BookingForm() {
           Add Breakfast ₹200
         </label>
 
-        {/* Total Price */}
         <div className="min-w-[140px] font-bold text-lg flex items-center justify-center text-black whitespace-nowrap">
           ₹{totalPrice.toLocaleString("en-IN")}
         </div>
 
-        {/* Submit Button */}
         <button
           type="submit"
           disabled={sending || !selectedRoom.available}
@@ -312,7 +314,6 @@ export default function BookingForm() {
         </button>
       </form>
 
-      {/* Status Message */}
       {message && (
         <p
           className={`mt-4 text-center text-sm font-semibold ${
@@ -325,7 +326,6 @@ export default function BookingForm() {
         </p>
       )}
 
-      {/* Contact Info Bar */}
       <div className="mt-8 bg-[#473605] text-white text-center py-3 text-sm font-semibold tracking-wide rounded-md select-none">
         Phone No. +91 07814 91779 | Reservation Number | Email:{" "}
         <a
@@ -336,7 +336,6 @@ export default function BookingForm() {
         </a>
       </div>
 
-      {/* Benefits Banner */}
       <div className="mt-8 overflow-x-auto">
         <div
           className="relative bg-black bg-opacity-90 rounded-lg shadow-lg flex items-center justify-between px-6 py-4 whitespace-nowrap text-white font-bold text-xl max-w-full"
@@ -393,4 +392,20 @@ function BenefitIcon({
         stroke="currentColor"
         strokeWidth={1.5}
       >
-        <path strokeLinecap="round" strokeLinejoin="round" d={path1} />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d={path1}
+        />
+        {path2 && (
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d={path2}
+          />
+        )}
+      </svg>
+      <span>{title}</span>
+    </div>
+  );
+}
