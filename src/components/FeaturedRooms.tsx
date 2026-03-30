@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef } from "react";
 import emailjs from "@emailjs/browser";
 
-// --- CONFIGURATION ---
 const SERVICE_ID = "service_12y6xre";
 const TEMPLATE_ID = "template_1scrkoq";
 const PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
@@ -14,7 +13,6 @@ const ROOMS = [
 
 const BREAKFAST_PRICE = 200;
 
-// --- HELPERS ---
 const parseDisplayDate = (dateStr: string): Date | null => {
   if (!dateStr || dateStr.length !== 10) return null;
   const parts = dateStr.split("/");
@@ -41,7 +39,6 @@ const toDisplayFormat = (yyyymmdd: string): string => {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 };
 
-// --- DATE INPUT COMPONENT ---
 interface DateInputProps {
   value: string;
   onChange: (val: string) => void;
@@ -60,15 +57,12 @@ const DateInput: React.FC<DateInputProps> = ({
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let raw = e.target.value.replace(/\D/g, "");
     if (raw.length > 8) raw = raw.slice(0, 8);
-
     let formatted = raw;
     if (raw.length > 4) {
-      formatted =
-        raw.slice(0, 2) + "/" + raw.slice(2, 4) + "/" + raw.slice(4);
+      formatted = raw.slice(0, 2) + "/" + raw.slice(2, 4) + "/" + raw.slice(4);
     } else if (raw.length > 2) {
       formatted = raw.slice(0, 2) + "/" + raw.slice(2);
     }
-
     onChange(formatted);
   };
 
@@ -87,16 +81,14 @@ const DateInput: React.FC<DateInputProps> = ({
   };
 
   return (
-    <div className="relative flex items-center min-w-[155px]">
+    <div className="relative flex items-center min-w-[175px]">
       <input
         type="text"
         value={value}
         onChange={handleTextChange}
         placeholder={placeholder}
         className="border border-black rounded px-4 py-2 w-full pr-10 text-black"
-        required
       />
-      {/* Calendar Icon Button */}
       <button
         type="button"
         onClick={openPicker}
@@ -118,7 +110,6 @@ const DateInput: React.FC<DateInputProps> = ({
           />
         </svg>
       </button>
-      {/* Hidden Native Date Input */}
       <input
         ref={hiddenRef}
         type="date"
@@ -132,7 +123,6 @@ const DateInput: React.FC<DateInputProps> = ({
   );
 };
 
-// --- MAIN BOOKING FORM ---
 export default function BookingForm() {
   const today = new Date().toISOString().split("T")[0];
 
@@ -146,7 +136,6 @@ export default function BookingForm() {
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Calculate Nights
   const nights = useMemo(() => {
     const start = parseDisplayDate(checkIn);
     const end = parseDisplayDate(checkOut);
@@ -156,7 +145,6 @@ export default function BookingForm() {
     return days > 0 ? days : 1;
   }, [checkIn, checkOut]);
 
-  // Calculate Total Price
   const totalPrice = useMemo(() => {
     return (selectedRoom.price + (addBreakfast ? BREAKFAST_PRICE : 0)) * nights;
   }, [selectedRoom, addBreakfast, nights]);
@@ -177,12 +165,10 @@ export default function BookingForm() {
       setMessage("Please enter valid dates in DD/MM/YYYY format.");
       return;
     }
-
     if (!name || !mobileNo || !email) {
       setMessage("Please fill all the fields.");
       return;
     }
-
     if (!selectedRoom.available) {
       setMessage("Selected room is not available.");
       return;
@@ -207,7 +193,6 @@ export default function BookingForm() {
         },
         PUBLIC_KEY
       );
-
       setMessage("Booking request sent successfully!");
       setCheckIn("");
       setCheckOut("");
@@ -226,6 +211,7 @@ export default function BookingForm() {
 
   return (
     <section className="max-w-full px-6 py-6 font-sans bg-transparent">
+      {/* Booking Form */}
       <form
         onSubmit={handleSubmit}
         className="flex flex-nowrap items-center gap-3 max-w-full overflow-x-auto"
@@ -314,7 +300,7 @@ export default function BookingForm() {
             sending
               ? "bg-red-600 text-white cursor-not-allowed opacity-50"
               : !selectedRoom.available
-              ? "bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed"
+              ? "bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed"
               : "text-red-600 hover:bg-red-600 hover:text-white"
           }`}
         >
@@ -326,7 +312,7 @@ export default function BookingForm() {
         </button>
       </form>
 
-      {/* Message */}
+      {/* Status Message */}
       {message && (
         <p
           className={`mt-4 text-center text-sm font-semibold ${
@@ -343,7 +329,7 @@ export default function BookingForm() {
       <div className="mt-8 bg-[#473605] text-white text-center py-3 text-sm font-semibold tracking-wide rounded-md select-none">
         Phone No. +91 07814 91779 | Reservation Number | Email:{" "}
         <a
-          href="mailto:reservations@blossomhotels.in"
+          href="mailto:hotelgreengarden0112@gmail.com"
           className="underline hover:text-gray-200"
         >
           hotelgreengarden0112@gmail.com
@@ -388,7 +374,6 @@ export default function BookingForm() {
   );
 }
 
-// --- BENEFIT ICON ---
 function BenefitIcon({
   title,
   path1,
@@ -401,4 +386,11 @@ function BenefitIcon({
   return (
     <div className="flex items-center space-x-2 whitespace-nowrap">
       <svg
-        xmlns="http://www.w3.org
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-6 w-6 flex-shrink-0"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d={path1} />
