@@ -15,7 +15,7 @@ export default function Hero() {
 
   return (
     <section className="relative">
-      <div className="relative h-[600px] md:h-[700px]">
+      <div className="relative h-[600px] md:h-[700px] overflow-hidden">
         {images.map((image, index) => (
           <img
             key={image}
@@ -27,20 +27,22 @@ export default function Hero() {
           />
         ))}
 
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60" />
 
+        {/* Center Hero Text */}
         <div className="absolute inset-0 flex items-center justify-center px-4">
           <div className="text-center text-white max-w-4xl -mt-20">
-            <h1 className="text-5xl md:text-7xl font-bold mb-4 tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]">
+            <h1 className="animate-slideUpFade text-5xl md:text-7xl font-bold mb-4 tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]">
               Welcome to Hotel Green Garden
             </h1>
-            <p className="text-xl md:text-2xl text-white/90 font-light drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+
+            <p className="animate-slideUpFadeDelay text-xl md:text-2xl text-white/90 font-light drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
               Experience Luxury & Comfort in Ludhiana
             </p>
           </div>
         </div>
 
-        {/* Bottom Text Only */}
+        {/* Bottom Text */}
         <div className="absolute bottom-0 left-0 right-0 pb-12 flex justify-center px-4">
           <div className="max-w-4xl w-full text-center text-white">
             <div className="flex flex-col items-center">
