@@ -200,7 +200,7 @@ export default function FAQ() {
                 className="group-hover:scale-110 transition-transform"
                 size={20}
               />
-              07814 91779
+              78143 91779
             </a>
           </div>
 
