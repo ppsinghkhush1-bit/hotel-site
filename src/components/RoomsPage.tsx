@@ -90,43 +90,43 @@ export default function RoomsPage() {
           id: 205,
           roomNumber: '205',
           available: true,
-          image: '/de1.jpeg',
-          galleryImages: ['/de1.jpeg']
+          image: '/205.jpeg',
+          galleryImages: ['/205.jpeg']
         },
         {
           id: 206,
           roomNumber: '206',
           available: true,
-          image: '/de2.jpeg',
-          galleryImages: ['/de2.jpeg']
+          image: '/206.jpeg',
+          galleryImages: ['/206.jpeg']
         },
         {
           id: 207,
           roomNumber: '207',
           available: true,
-          image: '/de3.jpeg',
-          galleryImages: ['/de3.jpeg']
+          image: '/207.jpeg',
+          galleryImages: ['/207.jpeg']
         },
         {
           id: 208,
           roomNumber: '208',
           available: true,
-          image: '/de4.jpeg',
-          galleryImages: ['/de4.jpeg']
+          image: '/208.jpeg',
+          galleryImages: ['/208.jpeg']
         },
         {
           id: 209,
           roomNumber: '209',
           available: true,
-          image: '/de1.jpeg',
-          galleryImages: ['/de1.jpeg']
+          image: '/209.jpeg',
+          galleryImages: ['/209.jpeg']
         },
         {
           id: 210,
           roomNumber: '210',
           available: true,
-          image: '/de2.jpeg',
-          galleryImages: ['/de2.jpeg']
+          image: '/210.jpeg',
+          galleryImages: ['/210.jpeg']
         }
       ]
     },
