@@ -6,7 +6,7 @@ const TEMPLATE_ID = "template_1scrkoq";
 const PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
 
 const ROOMS = [
-  { name: "Standard Room", price: 1500, available: true },
+  { name: "Normal Room", price: 1500, available: true },
   { name: "Deluxe Room", price: 1700, available: true },
   { name: "Luxury Room", price: 2500, available: false },
 ];
