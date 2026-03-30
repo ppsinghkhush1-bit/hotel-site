@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import emailjs from "@emailjs/browser";
 import { ArrowLeft, Calendar, X } from "lucide-react";
 
@@ -7,14 +7,41 @@ const SERVICE_ID = "service_12y6xre";
 const TEMPLATE_ID = "template_1scrkoq";
 const PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
 
-// Updated room categories
-const ROOMS = [
-  { name: "Normal Room", price: 1000, available: true },
-  { name: "Deluxe Room", price: 1700, available: true },
-  { name: "Luxury Room", price: 2500, available: false },
-] as const;
-
 const BREAKFAST_COST = 200;
+
+// --- ROOM DATA ---
+const ROOM_CATEGORIES = [
+  {
+    name: "Normal Room",
+    price: 1000,
+    rooms: [
+      { roomNumber: "201", available: true },
+      { roomNumber: "202", available: true },
+      { roomNumber: "203", available: true },
+      { roomNumber: "204", available: true },
+    ],
+  },
+  {
+    name: "Deluxe Room",
+    price: 1700,
+    rooms: [
+      { roomNumber: "205", available: true },
+      { roomNumber: "206", available: true },
+      { roomNumber: "207", available: true },
+      { roomNumber: "208", available: true },
+      { roomNumber: "209", available: true },
+      { roomNumber: "210", available: true },
+    ],
+  },
+  {
+    name: "Luxury Room",
+    price: 2500,
+    rooms: [
+      { roomNumber: "301", available: false },
+      { roomNumber: "302", available: false },
+    ],
+  },
+] as const;
 
 // --- DATE HELPERS ---
 const parseDisplayDate = (dateStr: string): Date | null => {
@@ -153,23 +180,29 @@ const DateInput: React.FC<DateInputProps> = ({
   );
 };
 
-// --- BOOKING PAGE / POPUP ---
 interface BookingPageProps {
   isOpen: boolean;
   onClose: () => void;
   onBack: () => void;
+  initialCategory?: string;
+  initialRoomNumber?: string;
 }
 
 const BookingPage: React.FC<BookingPageProps> = ({
   isOpen,
   onClose,
   onBack,
+  initialCategory,
+  initialRoomNumber,
 }) => {
   const today = new Date().toISOString().split("T")[0];
 
-  const [selectedRoomName, setSelectedRoomName] = useState<
-    (typeof ROOMS)[number]["name"]
-  >("Normal Room");
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string>(
+    initialCategory || "Normal Room"
+  );
+  const [selectedRoomNumber, setSelectedRoomNumber] = useState<string>(
+    initialRoomNumber || "201"
+  );
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [name, setName] = useState("");
@@ -179,10 +212,36 @@ const BookingPage: React.FC<BookingPageProps> = ({
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
 
-  const selectedRoom =
-    ROOMS.find((room) => room.name === selectedRoomName) ?? ROOMS[0];
+  useEffect(() => {
+    if (initialCategory) {
+      setSelectedCategoryName(initialCategory);
+    }
+    if (initialRoomNumber) {
+      setSelectedRoomNumber(initialRoomNumber);
+    }
+  }, [initialCategory, initialRoomNumber]);
 
-  const basePrice = selectedRoom.price;
+  const selectedCategory =
+    ROOM_CATEGORIES.find((category) => category.name === selectedCategoryName) ||
+    ROOM_CATEGORIES[0];
+
+  const availableRooms = selectedCategory.rooms;
+
+  useEffect(() => {
+    const roomExists = availableRooms.some(
+      (room) => room.roomNumber === selectedRoomNumber
+    );
+
+    if (!roomExists && availableRooms.length > 0) {
+      setSelectedRoomNumber(availableRooms[0].roomNumber);
+    }
+  }, [selectedCategoryName, selectedRoomNumber, availableRooms]);
+
+  const selectedRoom =
+    availableRooms.find((room) => room.roomNumber === selectedRoomNumber) ||
+    availableRooms[0];
+
+  const basePrice = selectedCategory.price;
 
   const nights = useMemo(() => {
     const start = parseDisplayDate(checkIn);
@@ -230,8 +289,8 @@ const BookingPage: React.FC<BookingPageProps> = ({
       return;
     }
 
-    if (!selectedRoom.available) {
-      setMessage("Luxury Room is currently under maintenance and unavailable for booking.");
+    if (!selectedRoom?.available) {
+      setMessage("This room is currently under maintenance and unavailable for booking.");
       return;
     }
 
@@ -242,7 +301,8 @@ const BookingPage: React.FC<BookingPageProps> = ({
         SERVICE_ID,
         TEMPLATE_ID,
         {
-          room_type: selectedRoom.name,
+          room_type: selectedCategory.name,
+          room_number: selectedRoom.roomNumber,
           base_price: basePrice,
           add_breakfast: addBreakfast ? "Yes" : "No",
           breakfast_price: addBreakfast ? BREAKFAST_COST : 0,
@@ -261,7 +321,8 @@ const BookingPage: React.FC<BookingPageProps> = ({
       setMessage("Booking request sent successfully!");
 
       setTimeout(() => {
-        setSelectedRoomName("Normal Room");
+        setSelectedCategoryName("Normal Room");
+        setSelectedRoomNumber("201");
         setCheckIn("");
         setCheckOut("");
         setName("");
@@ -327,22 +388,36 @@ const BookingPage: React.FC<BookingPageProps> = ({
                   Room Category
                 </label>
                 <select
-                  value={selectedRoomName}
-                  onChange={(e) =>
-                    setSelectedRoomName(
-                      e.target.value as (typeof ROOMS)[number]["name"]
-                    )
-                  }
+                  value={selectedCategoryName}
+                  onChange={(e) => setSelectedCategoryName(e.target.value)}
                   className="border border-gray-400 rounded-md p-3 text-black w-full focus:outline-none focus:border-red-500"
                   required
                 >
-                  {ROOMS.map((room) => (
+                  {ROOM_CATEGORIES.map((category) => (
+                    <option key={category.name} value={category.name}>
+                      {category.name} (₹{category.price})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col min-w-[220px] flex-1">
+                <label className="text-xs font-semibold uppercase mb-1 text-gray-600">
+                  Room Number
+                </label>
+                <select
+                  value={selectedRoomNumber}
+                  onChange={(e) => setSelectedRoomNumber(e.target.value)}
+                  className="border border-gray-400 rounded-md p-3 text-black w-full focus:outline-none focus:border-red-500"
+                  required
+                >
+                  {availableRooms.map((room) => (
                     <option
-                      key={room.name}
-                      value={room.name}
+                      key={room.roomNumber}
+                      value={room.roomNumber}
                       disabled={!room.available}
                     >
-                      {room.name} (₹{room.price})
+                      {room.roomNumber}
                       {!room.available ? " - Under Maintenance" : ""}
                     </option>
                   ))}
@@ -410,94 +485,36 @@ const BookingPage: React.FC<BookingPageProps> = ({
                   type="checkbox"
                   checked={addBreakfast}
                   onChange={(e) => setAddBreakfast(e.target.checked)}
-                  disabled={!selectedRoom.available}
+                  disabled={!selectedRoom?.available}
                   className="w-5 h-5 text-red-600"
                 />
                 <label
                   htmlFor="breakfast"
                   className={`font-medium cursor-pointer ${
-                    selectedRoom.available ? "text-gray-700" : "text-gray-400"
+                    selectedRoom?.available ? "text-gray-700" : "text-gray-400"
                   }`}
                 >
-                  {selectedRoom.available
+                  {selectedRoom?.available
                     ? `Add Breakfast (+₹${BREAKFAST_COST} per night)`
                     : "Breakfast unavailable for this room"}
                 </label>
               </div>
 
-              {!selectedRoom.available && (
+              {!selectedRoom?.available && (
                 <div className="w-full rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-700 font-medium">
-                  This category is currently under maintenance and cannot be booked.
+                  Room {selectedRoom?.roomNumber} is currently under maintenance and cannot be booked.
                 </div>
               )}
+
+              <div className="w-full rounded-lg bg-gray-50 border px-4 py-4 text-gray-700">
+                <p><strong>Selected Category:</strong> {selectedCategory.name}</p>
+                <p><strong>Selected Room Number:</strong> {selectedRoom?.roomNumber}</p>
+                <p><strong>Base Price:</strong> ₹{basePrice}</p>
+                <p><strong>Breakfast:</strong> {addBreakfast ? `Yes (+₹${BREAKFAST_COST}/night)` : "No"}</p>
+              </div>
 
               {message && (
                 <p
                   className={`w-full text-center font-semibold ${
                     message.toLowerCase().includes("success")
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {message}
-                </p>
-              )}
-
-              <div className="w-full mt-4 border-t pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="text-xl font-bold text-gray-800">
-                  Total:{" "}
-                  <span className="text-red-600">
-                    ₹{totalPrice.toLocaleString("en-IN")}
-                  </span>
-                  <span className="text-sm text-gray-500 ml-2">
-                    ({nights} Night{nights > 1 ? "s" : ""})
-                  </span>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={sending || !selectedRoom.available}
-                  className={`w-full md:w-auto px-8 py-3 rounded-md font-bold text-white transition ${
-                    sending || !selectedRoom.available
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-red-600 hover:bg-red-700"
-                  }`}
-                >
-                  {sending
-                    ? "Sending..."
-                    : !selectedRoom.available
-                    ? "Under Maintenance"
-                    : "Confirm Booking"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- MAIN APP ---
-export default function App() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Hotel Booking</h1>
-
-      <button
-        onClick={() => setIsOpen(true)}
-        className="bg-red-600 text-white px-8 py-4 rounded-lg font-bold text-lg shadow-lg hover:bg-red-700 transition"
-      >
-        Book Now
-      </button>
-
-      <BookingPage
-        isOpen={isOpen}
-        onBack={() => setIsOpen(false)}
-        onClose={() => setIsOpen(false)}
-      />
-    </div>
-  );
-}
+                      ? "
