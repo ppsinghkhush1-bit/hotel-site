@@ -25,7 +25,7 @@ export default function RoomsPage() {
     const data: Room[] = [
       {
         id: 1,
-        name: 'Standard Room',
+        name: 'Normal Room',
         basePrice: 1200,
         duration: '24 hours',
         image: '/10.jpg',
