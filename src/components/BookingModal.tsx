@@ -1,5 +1,8 @@
 import React, { useState, useMemo } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import emailjs from "@emailjs/browser";
+import { format, differenceInCalendarDays } from "date-fns";
 
 const SERVICE_ID = "service_12y6xre";
 const TEMPLATE_ID = "template_1scrkoq";
@@ -12,12 +15,14 @@ const ROOM_PRICES: Record<string, number> = {
 };
 
 export default function BookingForm() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date();
   const BREAKFAST_COST = 200;
 
   const [hotel, setHotel] = useState<keyof typeof ROOM_PRICES>("Standard Room");
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
+  // Using Date objects for the picker
+  const [checkInDate, setCheckInDate] = useState<Date | null>(new Date());
+  const [checkOutDate, setCheckOutDate] = useState<Date | null>(new Date(today.getTime() + 24 * 60 * 60 * 1000)); // Tomorrow
+  
   const [name, setName] = useState("");
   const [mobileNo, setMobileNo] = useState("");
   const [email, setEmail] = useState("");
@@ -27,15 +32,12 @@ export default function BookingForm() {
 
   const basePrice = ROOM_PRICES[hotel] || 0;
 
-  // Calculate nights difference (min 1)
+  // Calculate nights difference using date-fns
   const nights = useMemo(() => {
-    if (!checkIn || !checkOut) return 1;
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    const diffMs = end.getTime() - start.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 1;
-  }, [checkIn, checkOut]);
+    if (!checkInDate || !checkOutDate) return 1;
+    const diff = differenceInCalendarDays(checkOutDate, checkInDate);
+    return diff > 0 ? diff : 1;
+  }, [checkInDate, checkOutDate]);
 
   const totalPrice = useMemo(() => {
     return (basePrice + (addBreakfast ? BREAKFAST_COST : 0)) * nights;
@@ -44,13 +46,17 @@ export default function BookingForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!checkIn || !checkOut || !name || !mobileNo || !email) {
+    if (!checkInDate || !checkOutDate || !name || !mobileNo || !email) {
       setMessage("Please fill all fields.");
       return;
     }
 
     setSending(true);
     setMessage("");
+
+    // Format dates to YYYY-MM-DD string for EmailJS
+    const formattedCheckIn = format(checkInDate, "yyyy-MM-dd");
+    const formattedCheckOut = format(checkOutDate, "yyyy-MM-dd");
 
     try {
       await emailjs.send(
@@ -60,9 +66,9 @@ export default function BookingForm() {
           room_type: hotel,
           base_price: basePrice,
           add_breakfast: addBreakfast ? "Yes" : "No",
-          total_price: totalPrice.toString(), // Send without ₹ symbol
-          check_in: checkIn,
-          check_out: checkOut,
+          total_price: totalPrice.toString(),
+          check_in: formattedCheckIn,
+          check_out: formattedCheckOut,
           customer_name: name,
           customer_mobile: mobileNo,
           customer_email: email,
@@ -70,8 +76,9 @@ export default function BookingForm() {
         PUBLIC_KEY
       );
       setMessage("Booking request sent successfully!");
-      setCheckIn("");
-      setCheckOut("");
+      // Reset form
+      setCheckInDate(new Date());
+      setCheckOutDate(new Date(today.getTime() + 24 * 60 * 60 * 1000));
       setName("");
       setMobileNo("");
       setEmail("");
@@ -106,26 +113,34 @@ export default function BookingForm() {
           </select>
         </div>
 
+        {/* Check In Date Picker */}
         <div className="flex flex-col min-w-[140px]">
           <label className="text-xs font-semibold uppercase mb-1 text-black">Check In</label>
-          <input
-            type="date"
-            value={checkIn}
-            min={today}
-            onChange={(e) => setCheckIn(e.target.value)}
-            className="border border-gray-400 rounded-md p-2 text-black"
+          <DatePicker
+            selected={checkInDate}
+            onChange={(date) => setCheckInDate(date)}
+            selectsStart
+            startDate={checkInDate}
+            endDate={checkOutDate}
+            minDate={today}
+            dateFormat="yyyy-MM-dd"
+            className="border border-gray-400 rounded-md p-2 text-black w-full"
             required
           />
         </div>
 
+        {/* Check Out Date Picker */}
         <div className="flex flex-col min-w-[140px]">
           <label className="text-xs font-semibold uppercase mb-1 text-black">Check Out</label>
-          <input
-            type="date"
-            value={checkOut}
-            min={checkIn || today}
-            onChange={(e) => setCheckOut(e.target.value)}
-            className="border border-gray-400 rounded-md p-2 text-black"
+          <DatePicker
+            selected={checkOutDate}
+            onChange={(date) => setCheckOutDate(date)}
+            selectsEnd
+            startDate={checkInDate}
+            endDate={checkOutDate}
+            minDate={checkInDate || today}
+            dateFormat="yyyy-MM-dd"
+            className="border border-gray-400 rounded-md p-2 text-black w-full"
             required
           />
         </div>
