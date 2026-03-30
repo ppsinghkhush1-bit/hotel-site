@@ -87,7 +87,7 @@ export default function Footer({ onNavigate }: FooterProps = {}) {
             <ul className="space-y-3 text-gray-400">
               <li className="flex items-start gap-2">
                 <Phone size={18} className="mt-1 flex-shrink-0" />
-                <a href="tel:7814391779" className="hover:text-emerald-600 transition-colors">07814 91779</a>
+                <a href="tel:7814391779" className="hover:text-emerald-600 transition-colors">78143 91779</a>
               </li>
               <li className="flex items-start gap-2">
                 <Mail size={18} className="mt-1 flex-shrink-0" />
