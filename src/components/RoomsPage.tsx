@@ -8,6 +8,7 @@ interface RoomUnit {
   roomNumber: string;
   available: boolean;
   image: string;
+  galleryImages: string[];
 }
 
 interface RoomCategory {
@@ -16,7 +17,6 @@ interface RoomCategory {
   basePrice: number;
   duration: string;
   image: string;
-  galleryImages: string[];
   description: string;
   maxGuests: number;
   rooms: RoomUnit[];
@@ -43,15 +43,38 @@ export default function RoomsPage() {
       name: 'Normal Room',
       basePrice: 1000,
       duration: '24 hours',
-      image: '/10.jpg',
-      galleryImages: ['/10.jpg', '/9.jpg', '/standard2.png', '/image copy.png'],
+      image: '/201.jpeg',
       description: 'Affordable and comfortable room with essential facilities.',
       maxGuests: 2,
       rooms: [
-        { id: 201, roomNumber: '201', available: true, image: '/10.jpg' },
-        { id: 202, roomNumber: '202', available: true, image: '/9.jpg' },
-        { id: 203, roomNumber: '203', available: false, image: '/standard2.png' },
-        { id: 204, roomNumber: '204', available: true, image: '/image copy.png' }
+        {
+          id: 201,
+          roomNumber: '201',
+          available: true,
+          image: '/201.jpeg',
+          galleryImages: ['/201.jpeg', '/nr1 (201).jpeg']
+        },
+        {
+          id: 202,
+          roomNumber: '202',
+          available: true,
+          image: '/202.jpeg',
+          galleryImages: ['/202.jpeg', '/nr1 (202).jpeg']
+        },
+        {
+          id: 203,
+          roomNumber: '203',
+          available: false,
+          image: '/203.jpeg',
+          galleryImages: ['/203.jpeg']
+        },
+        {
+          id: 204,
+          roomNumber: '204',
+          available: true,
+          image: '/204.jpeg',
+          galleryImages: ['/204.jpeg', '/nr1 (204).jpeg']
+        }
       ]
     },
     {
@@ -60,16 +83,51 @@ export default function RoomsPage() {
       basePrice: 1700,
       duration: '24 hours',
       image: '/de1.jpeg',
-      galleryImages: ['/de1.jpeg', '/de2.jpeg', '/de3.jpeg', '/de4.jpeg'],
       description: 'Spacious deluxe room with premium interior and comfort.',
       maxGuests: 2,
       rooms: [
-        { id: 205, roomNumber: '205', available: true, image: '/de1.jpeg' },
-        { id: 206, roomNumber: '206', available: true, image: '/de2.jpeg' },
-        { id: 207, roomNumber: '207', available: true, image: '/de3.jpeg' },
-        { id: 208, roomNumber: '208', available: false, image: '/de4.jpeg' },
-        { id: 209, roomNumber: '209', available: true, image: '/de1.jpeg' },
-        { id: 210, roomNumber: '210', available: true, image: '/de2.jpeg' }
+        {
+          id: 205,
+          roomNumber: '205',
+          available: true,
+          image: '/de1.jpeg',
+          galleryImages: ['/de1.jpeg']
+        },
+        {
+          id: 206,
+          roomNumber: '206',
+          available: true,
+          image: '/de2.jpeg',
+          galleryImages: ['/de2.jpeg']
+        },
+        {
+          id: 207,
+          roomNumber: '207',
+          available: true,
+          image: '/de3.jpeg',
+          galleryImages: ['/de3.jpeg']
+        },
+        {
+          id: 208,
+          roomNumber: '208',
+          available: false,
+          image: '/de4.jpeg',
+          galleryImages: ['/de4.jpeg']
+        },
+        {
+          id: 209,
+          roomNumber: '209',
+          available: true,
+          image: '/de1.jpeg',
+          galleryImages: ['/de1.jpeg']
+        },
+        {
+          id: 210,
+          roomNumber: '210',
+          available: true,
+          image: '/de2.jpeg',
+          galleryImages: ['/de2.jpeg']
+        }
       ]
     },
     {
@@ -78,12 +136,23 @@ export default function RoomsPage() {
       basePrice: 2500,
       duration: '24 hours',
       image: '/de3.jpeg',
-      galleryImages: ['/de3.jpeg', '/de4.jpeg'],
       description: 'Luxury room with high-end features and design.',
       maxGuests: 3,
       rooms: [
-        { id: 401, roomNumber: '401', available: false, image: '/de3.jpeg' },
-        { id: 402, roomNumber: '402', available: true, image: '/de4.jpeg' }
+        {
+          id: 401,
+          roomNumber: '401',
+          available: false,
+          image: '/de3.jpeg',
+          galleryImages: ['/de3.jpeg']
+        },
+        {
+          id: 402,
+          roomNumber: '402',
+          available: true,
+          image: '/de4.jpeg',
+          galleryImages: ['/de4.jpeg']
+        }
       ]
     }
   ]);
@@ -94,7 +163,6 @@ export default function RoomsPage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
-  // Breakfast stays ₹200
   const BREAKFAST_PRICE = 200;
 
   const [breakfast, setBreakfast] = useState<{ [roomId: number]: boolean }>({});
@@ -117,7 +185,7 @@ export default function RoomsPage() {
       basePrice: finalPrice,
       duration: category.duration,
       image: roomUnit.image,
-      galleryImages: category.galleryImages,
+      galleryImages: roomUnit.galleryImages,
       description: category.description,
       maxGuests: category.maxGuests,
       available: roomUnit.available,
@@ -137,7 +205,7 @@ export default function RoomsPage() {
       basePrice: category.basePrice,
       duration: category.duration,
       image: roomUnit.image,
-      galleryImages: category.galleryImages,
+      galleryImages: roomUnit.galleryImages,
       description: category.description,
       maxGuests: category.maxGuests,
       available: roomUnit.available,
@@ -157,7 +225,6 @@ export default function RoomsPage() {
       <div className="max-w-6xl mx-auto space-y-8">
         {roomCategories.map((category) => (
           <div key={category.id} className="bg-white rounded-2xl shadow overflow-hidden">
-            {/* Category Header */}
             <div
               className="p-6 flex items-center justify-between cursor-pointer border-b"
               onClick={() =>
@@ -187,7 +254,6 @@ export default function RoomsPage() {
               </div>
             </div>
 
-            {/* Expanded Category Content */}
             {expandedCategory === category.id && (
               <div className="p-6 grid md:grid-cols-2 gap-6">
                 {category.rooms.map((roomUnit) => {
@@ -200,7 +266,6 @@ export default function RoomsPage() {
                       key={roomUnit.id}
                       className="border rounded-2xl overflow-hidden bg-white shadow-sm"
                     >
-                      {/* Room Image */}
                       <div className="relative h-56">
                         <img
                           src={roomUnit.image}
@@ -217,7 +282,6 @@ export default function RoomsPage() {
                         )}
                       </div>
 
-                      {/* Room Content */}
                       <div className="p-5">
                         <h3 className="text-xl font-bold">
                           {category.name} - Room {roomUnit.roomNumber}
@@ -235,7 +299,6 @@ export default function RoomsPage() {
                           ₹{finalPrice}
                         </div>
 
-                        {/* Breakfast Button */}
                         <button
                           onClick={() => toggleBreakfast(roomUnit.id)}
                           disabled={!roomUnit.available}
@@ -280,7 +343,6 @@ export default function RoomsPage() {
         ))}
       </div>
 
-      {/* Booking Modal */}
       {showBookingModal && selectedRoom && (
         <BookingModal
           room={selectedRoom}
@@ -292,7 +354,6 @@ export default function RoomsPage() {
         />
       )}
 
-      {/* Details Modal */}
       {showDetailsModal && selectedRoom && (
         <RoomDetailsModal
           room={selectedRoom}
@@ -305,7 +366,8 @@ export default function RoomsPage() {
                 id: selectedRoom.id,
                 roomNumber: selectedRoom.roomNumber,
                 available: selectedRoom.available,
-                image: selectedRoom.image
+                image: selectedRoom.image,
+                galleryImages: selectedRoom.galleryImages
               });
             }
           }}
