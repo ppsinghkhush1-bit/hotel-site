@@ -78,7 +78,11 @@ const DateInput: React.FC<DateInputProps> = ({
   const openPicker = () => {
     if (hiddenRef.current) {
       try {
-        (hiddenRef.current as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+        (
+          hiddenRef.current as HTMLInputElement & {
+            showPicker?: () => void;
+          }
+        ).showPicker?.();
       } catch {
         hiddenRef.current.click();
       }
@@ -155,7 +159,9 @@ export default function BookingForm() {
   }, [checkIn, checkOut]);
 
   const totalPrice = useMemo(() => {
-    return (selectedRoom.price + (addBreakfast ? BREAKFAST_PRICE : 0)) * nights;
+    return (
+      (selectedRoom.price + (addBreakfast ? BREAKFAST_PRICE : 0)) * nights
+    );
   }, [selectedRoom, addBreakfast, nights]);
 
   const handleRoomChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -337,75 +343,22 @@ export default function BookingForm() {
       </div>
 
       <div className="mt-8 overflow-x-auto">
-        <div
-          className="relative bg-black bg-opacity-90 rounded-lg shadow-lg flex items-center justify-between px-6 py-4 whitespace-nowrap text-white font-bold text-xl max-w-full"
-          style={{
-            clipPath:
-              "polygon(0 0, calc(100% - 30px) 0, 100% 50%, calc(100% - 30px) 100%, 0 100%)",
-          }}
-        >
-          <div>
-            BENEFITS OF DIRECT <span className="underline">BOOKING</span>
-            <br />
-            <span className="text-sm font-normal normal-case mt-1 block">
-              *Subject To Availability
-            </span>
-          </div>
-
-          <div className="flex space-x-12 ml-10 text-base font-semibold items-center">
-            <BenefitIcon
-              title="ROOM UPGRADE"
-              path1="M3 10h2v4H3v-4zm4 0h2v4H7v-4zm4 0h2v4h-2v-4zm4 0h2v4h-2v-4zM21 10h-2v4h2v-4z"
-              path2="M17 10V5a2 2 0 00-2-2H9a2 2 0 00-2 2v5h10z"
-            />
-            <BenefitIcon
-              title="EARLY CHECK-IN"
-              path1="M8 7V3m8 4V3m-4 18v-4m-2-5h4m-6 7a9 9 0 11-2-7.89M12 8v4l2 2"
-            />
-            <BenefitIcon
-              title="LATE CHECK-OUT"
-              path1="M12 4v2m0 12v2m8-10h-3M7 8H4m16 4h-3M7 16H4m14.364-1.636l-2.121-2.12M7.757 7.757L5.636 5.636m0 10.728l2.121-2.12M16.243 16.243l2.121 2.122"
-            />
-          </div>
-        </div>
+        <img
+          loading="lazy"
+          decoding="async"
+          width={800}
+          height={96}
+          src="https://blossomhotels.in/wp-content/uploads/2024/08/book-4.jpg"
+          alt="Benefits of direct booking"
+          className="w-full max-w-full rounded-lg shadow-lg"
+          srcSet="
+            https://blossomhotels.in/wp-content/uploads/2024/08/book-4.jpg 1000w,
+            https://blossomhotels.in/wp-content/uploads/2024/08/book-4-300x36.jpg 300w,
+            https://blossomhotels.in/wp-content/uploads/2024/08/book-4-768x92.jpg 768w
+          "
+          sizes="(max-width: 800px) 100vw, 800px"
+        />
       </div>
     </section>
-  );
-}
-
-function BenefitIcon({
-  title,
-  path1,
-  path2,
-}: {
-  title: string;
-  path1: string;
-  path2?: string;
-}) {
-  return (
-    <div className="flex items-center space-x-2 whitespace-nowrap">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-6 w-6 flex-shrink-0"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={1.5}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d={path1}
-        />
-        {path2 && (
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d={path2}
-          />
-        )}
-      </svg>
-      <span>{title}</span>
-    </div>
   );
 }
