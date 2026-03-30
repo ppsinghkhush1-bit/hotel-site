@@ -1,8 +1,5 @@
 import React, { useState, useMemo } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import emailjs from "@emailjs/browser";
-import { format, differenceInCalendarDays } from "date-fns";
 
 // --- CONFIGURATION ---
 const SERVICE_ID = "service_12y6xre";
@@ -20,16 +17,30 @@ interface BookingModalProps {
   onClose: () => void;
 }
 
+// Helper to parse DD/MM/YYYY to Date object
+const parseDate = (dateString: string): Date | null => {
+  const parts = dateString.split("/");
+  if (parts.length !== 3) return null;
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10); // 1-12
+  const year = parseInt(parts[2], 10);
+
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+  if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+
+  // Month is 0-indexed in JavaScript Date
+  return new Date(year, month - 1, day);
+};
+
 export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
   if (!isOpen) return null;
 
-  const today = new Date();
   const BREAKFAST_COST = 200;
 
   // Form State
   const [hotel, setHotel] = useState<keyof typeof ROOM_PRICES>("Standard Room");
-  const [checkInDate, setCheckInDate] = useState<Date | null>(new Date());
-  const [checkOutDate, setCheckOutDate] = useState<Date | null>(new Date(today.getTime() + 24 * 60 * 60 * 1000));
+  const [checkIn, setCheckIn] = useState<string>("");
+  const [checkOut, setCheckOut] = useState<string>("");
   
   const [name, setName] = useState("");
   const [mobileNo, setMobileNo] = useState("");
@@ -43,10 +54,15 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
 
   // Calculate Nights
   const nights = useMemo(() => {
-    if (!checkInDate || !checkOutDate) return 1;
-    const diff = differenceInCalendarDays(checkOutDate, checkInDate);
-    return diff > 0 ? diff : 1;
-  }, [checkInDate, checkOutDate]);
+    const start = parseDate(checkIn);
+    const end = parseDate(checkOut);
+    
+    if (!start || !end) return 1;
+    
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    return diffDays > 0 ? diffDays : 1;
+  }, [checkIn, checkOut]);
 
   // Calculate Total Price
   const totalPrice = useMemo(() => {
@@ -56,17 +72,24 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!checkInDate || !checkOutDate || !name || !mobileNo || !email) {
-      setMessage("Please fill all fields.");
+    // Validate dates format
+    const startDate = parseDate(checkIn);
+    const endDate = parseDate(checkOut);
+
+    if (!startDate || !endDate || !name || !mobileNo || !email) {
+      setMessage("Please fill all fields correctly (DD/MM/YYYY).");
       return;
     }
 
     setSending(true);
     setMessage("");
 
-    // Format dates for EmailJS
-    const formattedCheckIn = format(checkInDate, "yyyy-MM-dd");
-    const formattedCheckOut = format(checkOutDate, "yyyy-MM-dd");
+    // Format dates for EmailJS (YYYY-MM-DD)
+    // We use the input string directly if it matches, or format the Date object
+    // Here we assume the user typed DD/MM/YYYY, we convert to YYYY-MM-DD for the email
+    const formatForEmail = (d: Date) => {
+      return d.toISOString().split('T')[0];
+    };
 
     try {
       await emailjs.send(
@@ -77,8 +100,8 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
           base_price: basePrice,
           add_breakfast: addBreakfast ? "Yes" : "No",
           total_price: totalPrice.toString(),
-          check_in: formattedCheckIn,
-          check_out: formattedCheckOut,
+          check_in: formatForEmail(startDate),
+          check_out: formatForEmail(endDate),
           customer_name: name,
           customer_mobile: mobileNo,
           customer_email: email,
@@ -88,15 +111,15 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
       
       setMessage("Booking request sent successfully!");
       
-      // Reset Form after success
+      // Reset Form
       setTimeout(() => {
-        setCheckInDate(new Date());
-        setCheckOutDate(new Date(today.getTime() + 24 * 60 * 60 * 1000));
+        setCheckIn("");
+        setCheckOut("");
         setName("");
         setMobileNo("");
         setEmail("");
         setAddBreakfast(false);
-        onClose(); // Close modal
+        onClose();
       }, 2000);
 
     } catch (error) {
@@ -142,34 +165,28 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
             </select>
           </div>
 
-          {/* Check In */}
+          {/* Check In (Text Input) */}
           <div className="flex flex-col min-w-[200px] flex-1">
             <label className="text-xs font-semibold uppercase mb-1 text-gray-600">Check In</label>
-            <DatePicker
-              selected={checkInDate}
-              onChange={(date) => setCheckInDate(date)}
-              selectsStart
-              startDate={checkInDate}
-              endDate={checkOutDate}
-              minDate={today}
-              dateFormat="yyyy-MM-dd"
-              className="border border-gray-300 rounded-md p-3 text-black w-full focus:outline-none focus:border-red-500"
+            <input
+              type="text"
+              placeholder="DD/MM/YYYY"
+              value={checkIn}
+              onChange={(e) => setCheckIn(e.target.value)}
+              className="border border-gray-300 rounded-md p-3 text-black focus:outline-none focus:border-red-500"
               required
             />
           </div>
 
-          {/* Check Out */}
+          {/* Check Out (Text Input) */}
           <div className="flex flex-col min-w-[200px] flex-1">
             <label className="text-xs font-semibold uppercase mb-1 text-gray-600">Check Out</label>
-            <DatePicker
-              selected={checkOutDate}
-              onChange={(date) => setCheckOutDate(date)}
-              selectsEnd
-              startDate={checkInDate}
-              endDate={checkOutDate}
-              minDate={checkInDate || today}
-              dateFormat="yyyy-MM-dd"
-              className="border border-gray-300 rounded-md p-3 text-black w-full focus:outline-none focus:border-red-500"
+            <input
+              type="text"
+              placeholder="DD/MM/YYYY"
+              value={checkOut}
+              onChange={(e) => setCheckOut(e.target.value)}
+              className="border border-gray-300 rounded-md p-3 text-black focus:outline-none focus:border-red-500"
               required
             />
           </div>
