@@ -7,8 +7,9 @@ const SERVICE_ID = "service_12y6xre";
 const TEMPLATE_ID = "template_1scrkoq";
 const PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
 
+// Updated room categories
 const ROOMS = [
-  { name: "Standard Room", price: 1500, available: true },
+  { name: "Normal Room", price: 1000, available: true },
   { name: "Deluxe Room", price: 1700, available: true },
   { name: "Luxury Room", price: 2500, available: false },
 ] as const;
@@ -18,6 +19,7 @@ const BREAKFAST_COST = 200;
 // --- DATE HELPERS ---
 const parseDisplayDate = (dateStr: string): Date | null => {
   if (!dateStr || dateStr.length !== 10) return null;
+
   const parts = dateStr.split("/");
   if (parts.length !== 3) return null;
 
@@ -165,7 +167,9 @@ const BookingPage: React.FC<BookingPageProps> = ({
 }) => {
   const today = new Date().toISOString().split("T")[0];
 
-  const [selectedRoomName, setSelectedRoomName] = useState<(typeof ROOMS)[number]["name"]>("Standard Room");
+  const [selectedRoomName, setSelectedRoomName] = useState<
+    (typeof ROOMS)[number]["name"]
+  >("Normal Room");
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [name, setName] = useState("");
@@ -227,7 +231,7 @@ const BookingPage: React.FC<BookingPageProps> = ({
     }
 
     if (!selectedRoom.available) {
-      setMessage("Selected room is currently unavailable.");
+      setMessage("Luxury Room is currently under maintenance and unavailable for booking.");
       return;
     }
 
@@ -241,12 +245,15 @@ const BookingPage: React.FC<BookingPageProps> = ({
           room_type: selectedRoom.name,
           base_price: basePrice,
           add_breakfast: addBreakfast ? "Yes" : "No",
+          breakfast_price: addBreakfast ? BREAKFAST_COST : 0,
           total_price: totalPrice.toString(),
+          nights: nights.toString(),
           check_in: formatDateForEmail(startDate),
           check_out: formatDateForEmail(endDate),
           customer_name: name,
           customer_mobile: mobileNo,
           customer_email: email,
+          booking_status: "Pending Confirmation",
         },
         PUBLIC_KEY
       );
@@ -254,7 +261,7 @@ const BookingPage: React.FC<BookingPageProps> = ({
       setMessage("Booking request sent successfully!");
 
       setTimeout(() => {
-        setSelectedRoomName("Standard Room");
+        setSelectedRoomName("Normal Room");
         setCheckIn("");
         setCheckOut("");
         setName("");
@@ -317,7 +324,7 @@ const BookingPage: React.FC<BookingPageProps> = ({
             >
               <div className="flex flex-col min-w-[220px] flex-1">
                 <label className="text-xs font-semibold uppercase mb-1 text-gray-600">
-                  Room Type
+                  Room Category
                 </label>
                 <select
                   value={selectedRoomName}
@@ -335,8 +342,8 @@ const BookingPage: React.FC<BookingPageProps> = ({
                       value={room.name}
                       disabled={!room.available}
                     >
-                      {room.name} (₹{room.price}){" "}
-                      {!room.available ? "- Unavailable" : ""}
+                      {room.name} (₹{room.price})
+                      {!room.available ? " - Under Maintenance" : ""}
                     </option>
                   ))}
                 </select>
@@ -403,15 +410,26 @@ const BookingPage: React.FC<BookingPageProps> = ({
                   type="checkbox"
                   checked={addBreakfast}
                   onChange={(e) => setAddBreakfast(e.target.checked)}
+                  disabled={!selectedRoom.available}
                   className="w-5 h-5 text-red-600"
                 />
                 <label
                   htmlFor="breakfast"
-                  className="text-gray-700 font-medium cursor-pointer"
+                  className={`font-medium cursor-pointer ${
+                    selectedRoom.available ? "text-gray-700" : "text-gray-400"
+                  }`}
                 >
-                  Add Breakfast (+₹200 per night)
+                  {selectedRoom.available
+                    ? `Add Breakfast (+₹${BREAKFAST_COST} per night)`
+                    : "Breakfast unavailable for this room"}
                 </label>
               </div>
+
+              {!selectedRoom.available && (
+                <div className="w-full rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-700 font-medium">
+                  This category is currently under maintenance and cannot be booked.
+                </div>
+              )}
 
               {message && (
                 <p
@@ -448,7 +466,7 @@ const BookingPage: React.FC<BookingPageProps> = ({
                   {sending
                     ? "Sending..."
                     : !selectedRoom.available
-                    ? "Room Unavailable"
+                    ? "Under Maintenance"
                     : "Confirm Booking"}
                 </button>
               </div>
