@@ -22,13 +22,12 @@ const parseDate = (dateString: string): Date | null => {
   const parts = dateString.split("/");
   if (parts.length !== 3) return null;
   const day = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10); // 1-12
+  const month = parseInt(parts[1], 10);
   const year = parseInt(parts[2], 10);
 
   if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
   if (day < 1 || day > 31 || month < 1 || month > 12) return null;
 
-  // Month is 0-indexed in JavaScript Date
   return new Date(year, month - 1, day);
 };
 
@@ -72,7 +71,6 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate dates format
     const startDate = parseDate(checkIn);
     const endDate = parseDate(checkOut);
 
@@ -84,9 +82,6 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
     setSending(true);
     setMessage("");
 
-    // Format dates for EmailJS (YYYY-MM-DD)
-    // We use the input string directly if it matches, or format the Date object
-    // Here we assume the user typed DD/MM/YYYY, we convert to YYYY-MM-DD for the email
     const formatForEmail = (d: Date) => {
       return d.toISOString().split('T')[0];
     };
@@ -111,7 +106,6 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
       
       setMessage("Booking request sent successfully!");
       
-      // Reset Form
       setTimeout(() => {
         setCheckIn("");
         setCheckOut("");
@@ -132,10 +126,10 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
         
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
           <h2 className="text-2xl font-bold text-red-600">Book Your Stay</h2>
           <button 
             onClick={onClose}
@@ -145,8 +139,8 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 flex flex-wrap gap-6 justify-center">
+        {/* Form Content */}
+        <form onSubmit={handleSubmit} className="p-6 flex flex-wrap gap-6 justify-center flex-1">
           
           {/* Room Type */}
           <div className="flex flex-col min-w-[200px] flex-1">
@@ -165,7 +159,7 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
             </select>
           </div>
 
-          {/* Check In (Text Input) */}
+          {/* Check In */}
           <div className="flex flex-col min-w-[200px] flex-1">
             <label className="text-xs font-semibold uppercase mb-1 text-gray-600">Check In</label>
             <input
@@ -178,7 +172,7 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
             />
           </div>
 
-          {/* Check Out (Text Input) */}
+          {/* Check Out */}
           <div className="flex flex-col min-w-[200px] flex-1">
             <label className="text-xs font-semibold uppercase mb-1 text-gray-600">Check Out</label>
             <input
@@ -244,26 +238,6 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
             </label>
           </div>
 
-          {/* Total Price & Submit */}
-          <div className="w-full flex flex-col md:flex-row items-center justify-between gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
-            <div className="text-xl font-bold text-gray-800">
-              Total Price: <span className="text-red-600">₹{totalPrice.toLocaleString("en-IN")}</span>
-              <span className="text-sm font-normal text-gray-500 ml-2">({nights} Nights)</span>
-            </div>
-
-            <button
-              type="submit"
-              disabled={sending}
-              className={`px-8 py-3 rounded-md font-bold transition shadow-md ${
-                sending 
-                  ? "bg-gray-400 text-white cursor-not-allowed" 
-                  : "bg-red-600 text-white hover:bg-red-700"
-              }`}
-            >
-              {sending ? "Sending..." : "Confirm Booking"}
-            </button>
-          </div>
-
           {/* Status Message */}
           {message && (
             <p className={`w-full text-center text-sm font-semibold mt-2 ${
@@ -272,6 +246,26 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
               {message}
             </p>
           )}
+
+          {/* Footer / Button - Sticky at bottom */}
+          <div className="w-full sticky bottom-0 bg-white p-4 border-t border-gray-100 mt-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-xl font-bold text-gray-800">
+              Total: <span className="text-red-600">₹{totalPrice.toLocaleString("en-IN")}</span>
+              <span className="text-sm font-normal text-gray-500 ml-2">({nights} Nights)</span>
+            </div>
+
+            <button
+              type="submit"
+              disabled={sending}
+              className={`w-full md:w-auto px-8 py-3 rounded-md font-bold transition shadow-lg ${
+                sending 
+                  ? "bg-gray-400 text-white cursor-not-allowed" 
+                  : "bg-red-600 text-white hover:bg-red-700"
+              }`}
+            >
+              {sending ? "Sending..." : "Confirm Booking"}
+            </button>
+          </div>
         </form>
       </div>
     </div>
