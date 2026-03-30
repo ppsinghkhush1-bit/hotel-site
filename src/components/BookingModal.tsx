@@ -7,11 +7,11 @@ const SERVICE_ID = "service_12y6xre";
 const TEMPLATE_ID = "template_1scrkoq";
 const PUBLIC_KEY = "bsmrGxOAEmpS7_WtU";
 
-const ROOM_PRICES: Record<string, number> = {
-  "Standard Room": 1500,
-  "Deluxe Room": 1700,
-  "Luxury Room": 2500,
-};
+const ROOMS = [
+  { name: "Standard Room", price: 1500, available: true },
+  { name: "Deluxe Room", price: 1700, available: true },
+  { name: "Luxury Room", price: 2500, available: false },
+] as const;
 
 const BREAKFAST_COST = 200;
 
@@ -30,7 +30,6 @@ const parseDisplayDate = (dateStr: string): Date | null => {
 
   const date = new Date(year, month - 1, day);
 
-  // Extra validation for impossible dates like 31/02/2025
   if (
     date.getFullYear() !== year ||
     date.getMonth() !== month - 1 ||
@@ -166,7 +165,7 @@ const BookingPage: React.FC<BookingPageProps> = ({
 }) => {
   const today = new Date().toISOString().split("T")[0];
 
-  const [hotel, setHotel] = useState<keyof typeof ROOM_PRICES>("Standard Room");
+  const [selectedRoomName, setSelectedRoomName] = useState<(typeof ROOMS)[number]["name"]>("Standard Room");
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [name, setName] = useState("");
@@ -176,7 +175,10 @@ const BookingPage: React.FC<BookingPageProps> = ({
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
 
-  const basePrice = ROOM_PRICES[hotel] || 0;
+  const selectedRoom =
+    ROOMS.find((room) => room.name === selectedRoomName) ?? ROOMS[0];
+
+  const basePrice = selectedRoom.price;
 
   const nights = useMemo(() => {
     const start = parseDisplayDate(checkIn);
@@ -224,6 +226,11 @@ const BookingPage: React.FC<BookingPageProps> = ({
       return;
     }
 
+    if (!selectedRoom.available) {
+      setMessage("Selected room is currently unavailable.");
+      return;
+    }
+
     setSending(true);
 
     try {
@@ -231,7 +238,7 @@ const BookingPage: React.FC<BookingPageProps> = ({
         SERVICE_ID,
         TEMPLATE_ID,
         {
-          room_type: hotel,
+          room_type: selectedRoom.name,
           base_price: basePrice,
           add_breakfast: addBreakfast ? "Yes" : "No",
           total_price: totalPrice.toString(),
@@ -247,7 +254,7 @@ const BookingPage: React.FC<BookingPageProps> = ({
       setMessage("Booking request sent successfully!");
 
       setTimeout(() => {
-        setHotel("Standard Room");
+        setSelectedRoomName("Standard Room");
         setCheckIn("");
         setCheckOut("");
         setName("");
@@ -269,7 +276,6 @@ const BookingPage: React.FC<BookingPageProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
       <div className="min-h-screen bg-gray-50">
-        {/* Top Bar */}
         <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
             <button
@@ -296,7 +302,6 @@ const BookingPage: React.FC<BookingPageProps> = ({
           </div>
         </div>
 
-        {/* Content */}
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
             <div className="px-6 py-5 bg-red-600 text-white">
@@ -315,16 +320,23 @@ const BookingPage: React.FC<BookingPageProps> = ({
                   Room Type
                 </label>
                 <select
-                  value={hotel}
+                  value={selectedRoomName}
                   onChange={(e) =>
-                    setHotel(e.target.value as keyof typeof ROOM_PRICES)
+                    setSelectedRoomName(
+                      e.target.value as (typeof ROOMS)[number]["name"]
+                    )
                   }
                   className="border border-gray-400 rounded-md p-3 text-black w-full focus:outline-none focus:border-red-500"
                   required
                 >
-                  {Object.entries(ROOM_PRICES).map(([room, price]) => (
-                    <option key={room} value={room}>
-                      {room} (₹{price})
+                  {ROOMS.map((room) => (
+                    <option
+                      key={room.name}
+                      value={room.name}
+                      disabled={!room.available}
+                    >
+                      {room.name} (₹{room.price}){" "}
+                      {!room.available ? "- Unavailable" : ""}
                     </option>
                   ))}
                 </select>
@@ -426,14 +438,18 @@ const BookingPage: React.FC<BookingPageProps> = ({
 
                 <button
                   type="submit"
-                  disabled={sending}
+                  disabled={sending || !selectedRoom.available}
                   className={`w-full md:w-auto px-8 py-3 rounded-md font-bold text-white transition ${
-                    sending
+                    sending || !selectedRoom.available
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-red-600 hover:bg-red-700"
                   }`}
                 >
-                  {sending ? "Sending..." : "Confirm Booking"}
+                  {sending
+                    ? "Sending..."
+                    : !selectedRoom.available
+                    ? "Room Unavailable"
+                    : "Confirm Booking"}
                 </button>
               </div>
             </form>
