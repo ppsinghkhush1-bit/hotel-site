@@ -1,36 +1,70 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+  <meta charset="UTF-8" />
 
-    <!-- ✅ FORCE HTTPS + NON-WWW -->
-    <script>
-      if (location.protocol !== "https:" || location.hostname.startsWith("www")) {
-        location.href = "https://hotelgreengarden.in" + location.pathname;
-      }
-    </script>
+  <!-- ✅ VIEWPORT -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- ✅ CANONICAL URL -->
-    <link rel="canonical" href="https://hotelgreengarden.in/" />
+  <!-- ✅ TITLE -->
+  <title>Hotel Green Garden Ludhiana | Best Hotel in Ludhiana</title>
 
-    <link rel="icon" type="image/png" href="https://i.ibb.co/Lz5BYmrK/hotel-logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- ✅ META DESCRIPTION -->
+  <meta name="description" content="Hotel Green Garden Ludhiana offers luxury rooms, modern amenities, and best hospitality in Punjab. Book your comfortable stay now." />
 
-    <title>Hotel Green Garden Ludhiana - Luxury Accommodation in Punjab</title>
+  <!-- ✅ CANONICAL -->
+  <link rel="canonical" href="https://hotelgreengarden.in/" />
 
-    <meta name="description" content="Experience premium hospitality at Hotel Green Garden Ludhiana. Modern rooms, excellent amenities, and exceptional service in the heart of Punjab." />
+  <!-- ✅ FAVICON -->
+  <link rel="icon" href="https://i.ibb.co/Lz5BYmrK/hotel-logo.png" />
 
-    <meta property="og:title" content="Hotel Green Garden Ludhiana" />
-    <meta property="og:description" content="Luxury accommodation in Ludhiana with modern amenities and exceptional service" />
-    <meta property="og:image" content="https://i.ibb.co/Lz5BYmrK/hotel-logo.png" />
+  <!-- ✅ OPEN GRAPH (FACEBOOK, WHATSAPP) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Hotel Green Garden Ludhiana" />
+  <meta property="og:description" content="Luxury hotel in Ludhiana with modern amenities and premium hospitality." />
+  <meta property="og:url" content="https://hotelgreengarden.in/" />
+  <meta property="og:image" content="https://i.ibb.co/Lz5BYmrK/hotel-logo.png" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Hotel Green Garden Ludhiana" />
-    <meta name="twitter:image" content="https://i.ibb.co/Lz5BYmrK/hotel-logo.png" />
-  </head>
+  <!-- ✅ TWITTER -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Hotel Green Garden Ludhiana" />
+  <meta name="twitter:description" content="Best hotel in Ludhiana for comfortable and luxury stay." />
+  <meta name="twitter:image" content="https://i.ibb.co/Lz5BYmrK/hotel-logo.png" />
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <!-- ✅ GOOGLE VERIFICATION (Search Console me milega code) -->
+  <!-- <meta name="google-site-verification" content="YOUR_CODE_HERE" /> -->
+
+  <!-- ✅ SCHEMA MARKUP (VERY IMPORTANT) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Hotel",
+    "name": "Hotel Green Garden Ludhiana",
+    "url": "https://hotelgreengarden.in/",
+    "logo": "https://i.ibb.co/Lz5BYmrK/hotel-logo.png",
+    "image": "https://i.ibb.co/Lz5BYmrK/hotel-logo.png",
+    "telephone": "+91-78143-91779",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Tajpur Rd, opp. HDFC Bank",
+      "addressLocality": "Ludhiana",
+      "addressRegion": "Punjab",
+      "postalCode": "141008",
+      "addressCountry": "IN"
+    }
+  }
+  </script>
+
+</head>
+
+<body>
+
+  <!-- ✅ WEBSITE NAME SIGNAL -->
+  <h1 style="display:none;">Hotel Green Garden Ludhiana</h1>
+
+  <div id="root"></div>
+
+  <script type="module" src="/src/main.tsx"></script>
+
+</body>
 </html>
