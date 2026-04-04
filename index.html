@@ -2,128 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  
-  <!-- ✅ VIEWPORT -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <!-- ✅ ROBOTS (Allow Indexing) -->
-  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-
-  <!-- ✅ TITLE (Keep it under 60 chars if possible, but this is fine) -->
   <title>Hotel Green Garden Ludhiana | Luxury Stay Near Tajpur Road</title>
 
-  <!-- ✅ META DESCRIPTION (Keep it under 160 chars) -->
-  <meta name="description" content="Book Hotel Green Garden Ludhiana. Premium luxury rooms, free Wi-Fi, AC & parking. Located on Tajpur Rd, opp. HDFC Bank. Call 078143 91779." />
-
-  <!-- ✅ CANONICAL URL -->
+  <meta name="description" content="Book Hotel Green Garden Ludhiana. Premium rooms, free WiFi, AC & parking." />
   <link rel="canonical" href="https://hotelgreengarden.in/" />
 
-  <!-- ✅ FAVICON -->
-  <link rel="icon" type="image/png" href="https://i.ibb.co/Lz5BYmrK/hotel-logo.png" />
+  <link rel="icon" href="https://i.ibb.co/Lz5BYmrK/hotel-logo.png" />
 
-  <!-- ✅ OPEN GRAPH (Facebook, WhatsApp, LinkedIn) -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://hotelgreengarden.in/" />
-  <meta property="og:title" content="Hotel Green Garden Ludhiana | Luxury Hotel in Punjab" />
-  <meta property="og:description" content="Experience premium hospitality at Hotel Green Garden Ludhiana. Modern rooms, excellent amenities, and exceptional service." />
+  <!-- Open Graph -->
+  <meta property="og:title" content="Hotel Green Garden Ludhiana" />
+  <meta property="og:description" content="Luxury stay in Ludhiana." />
   <meta property="og:image" content="https://i.ibb.co/Lz5BYmrK/hotel-logo.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:locale" content="en_IN" />
 
-  <!-- ✅ TWITTER CARDS -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="https://hotelgreengarden.in/" />
-  <meta name="twitter:title" content="Hotel Green Garden Ludhiana" />
-  <meta name="twitter:description" content="Luxury accommodation in Ludhiana. Book your stay now for best rates." />
-  <meta name="twitter:image" content="https://i.ibb.co/Lz5BYmrK/hotel-logo.png" />
+  <!-- ✅ FIXED ASSET PATHS -->
+  <script type="module" src="./assets/index-BLdgtIT5.js"></script>
+  <link rel="stylesheet" href="./assets/index-BNIG3MWs.css" />
 
-  <!-- ✅ PRECONNECT FOR PERFORMANCE -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-
-  <!-- ✅ SCHEMA MARKUP (JSON-LD) - CRITICAL FOR GOOGLE KNOWLEDGE PANEL -->
+  <!-- SEO Schema -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Hotel",
     "name": "Hotel Green Garden",
-    "alternateName": "Hotel Green Garden Ludhiana",
-    "url": "https://hotelgreengarden.in/",
-    "logo": "https://i.ibb.co/Lz5BYmrK/hotel-logo.png",
-    "image": [
-      "https://i.ibb.co/Lz5BYmrK/hotel-logo.png",
-      "https://hotelgreengarden.in/your-room-photo.jpg" 
-    ],
-    "telephone": "+91-78143-91779",
-    "email": "info@hotelgreengarden.in",
-    "priceRange": "₹₹",
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "Tajpur Rd, opp. HDFC Bank, Guru Ram Das Nagar",
-      "addressLocality": "Bhamian Khurd",
-      "addressRegion": "Ludhiana",
-      "postalCode": "141008",
+      "streetAddress": "Tajpur Rd, opp. HDFC Bank",
+      "addressLocality": "Ludhiana",
       "addressCountry": "IN"
     },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": "30.8895", 
-      "longitude": "75.8945" 
-    },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.5",
-      "reviewCount": "23"
-    },
-    "amenityFeature": [
-      {
-        "@type": "LocationFeatureSpecification",
-        "name": "Free WiFi",
-        "value": true
-      },
-      {
-        "@type": "LocationFeatureSpecification",
-        "name": "Air Conditioning",
-        "value": true
-      },
-      {
-        "@type": "LocationFeatureSpecification",
-        "name": "Free Parking",
-        "value": true
-      }
-    ]
+    "telephone": "+91-78143-91779"
   }
   </script>
-
-  <!-- ✅ VITE/REACT ENTRY POINTS -->
-  <script type="module" crossorigin src="/assets/index-BLdgtIT5.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-BNIG3MWs.css">
 </head>
 
 <body>
-
-  <!-- 
-    ⚠️ IMPORTANT: 
-    Since you are using React/Vite, Google needs to see an <h1> tag 
-    with the hotel name INSIDE the #root div when the page loads.
-    
-    If your React app takes time to load, Google might miss it.
-    
-    OPTION A (Best): Ensure your React App's homepage renders:
-    <h1>Hotel Green Garden Ludhiana</h1>
-    
-    OPTION B (Fallback): Keep this visible h1 but style it to match your design.
-    Do NOT use display:none. Google penalizes hidden text.
-  -->
-  
   <div id="root">
-    <!-- Fallback content while JS loads (Optional but good for SEO) -->
-    <div style="text-align:center; padding: 50px; font-family: sans-serif;">
-      <h1>Hotel Green Garden Ludhiana</h1>
-      <p>Loading luxury accommodation details...</p>
-    </div>
+    <h1 style="text-align:center;">Hotel Green Garden Ludhiana</h1>
   </div>
-
 </body>
 </html>
